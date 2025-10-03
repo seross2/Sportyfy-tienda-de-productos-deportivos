@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportify Store</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Sportify Store</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Productos</a></li>
+                    <li><a href="/cart.html">Carrito</a></li>
+                    <li><a href="/contact.html">Contacto</a></li>
+                    <li id="login-link"><a href="/login.html">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Este contenedor se usará para mostrar el panel de admin o los productos -->
+            <div id="main-content">
+                <section id="products">
+                    <h2>Nuestros Productos</h2>
+                    <div class="product-grid">
+                        <!-- Los productos se cargarán aquí dinámicamente -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Contenedor de notificaciones global -->
+    <div id="message"
+        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
+    </div>
+
+    <script type="module" src="/app.js" defer></script>
+    <script type="module" src="/auth.js" defer></script>
+</body>
+
+</html>
