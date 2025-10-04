@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Compra - Sportify Store</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Productos</a></li>
+                    <li><a href="/cart.html">Volver al Carrito</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container checkout-container">
+            <div class="order-summary">
+                <h3>Resumen de tu Pedido</h3>
+                <div id="summary-items">
+                    <!-- Resumen de items se cargará aquí -->
+                </div>
+                <p class="summary-total">Total: <strong id="summary-total">$0.00</strong></p>
+            </div>
+
+            <div class="shipping-form">
+                <h3>Información de Envío</h3>
+                <form id="checkout-form">
+                    <input type="text" id="direccion" name="direccion_envio" placeholder="Dirección de Envío Completa"
+                        required>
+                    <input type="tel" id="telefono" name="telefono_contacto" placeholder="Teléfono de Contacto"
+                        required>
+                    <textarea id="notas" name="notas"
+                        placeholder="Notas adicionales para el envío (opcional)"></textarea>
+                    <button type="submit" id="pay-button">Pagar con Stripe</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div id="message"
+        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
+    </div>
+
+    <script type="module" src="/auth.js"></script>
+    <script type="module" src="/checkout.js"></script>
+</body>
+
+</html>

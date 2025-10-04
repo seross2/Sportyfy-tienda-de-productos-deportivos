@@ -29,6 +29,16 @@
             <div id="main-content">
                 <section id="products">
                     <h2>Nuestros Productos</h2>
+                    <div class="filters">
+                        <input type="search" id="search-input" placeholder="Buscar producto...">
+                        <select id="category-filter">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                        <select id="brand-filter">
+                            <option value="">Todas las marcas</option>
+                        </select>
+                        <button id="reset-filters">Limpiar Filtros</button>
+                    </div>
                     <div class="product-grid">
                         <!-- Los productos se cargarán aquí dinámicamente -->
                     </div>

@@ -1,108 +1,75 @@
-import { getSupabaseClient } from '/supabaseClient.js';
 import { showToast } from '/utils.js';
-import { getCart, updateProductQuantity, removeProductFromCart } from '/cart-logic.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const supabase = await getSupabaseClient();
-    const cartItemsContainer = document.getElementById('cart-items-container');
-    const cartSummary = document.getElementById('cart-summary');
-    const checkoutButton = document.getElementById('checkout-button');
-    const itemTemplate = document.getElementById('cart-item-template');
+const cartItemsContainer = document.getElementById('cart-items-container');
+const cartTotalElement = document.getElementById('cart-total');
+const clearCartButton = document.getElementById('clear-cart-button');
+const goToCheckoutButton = document.getElementById('go-to-checkout-button');
+const CART_KEY = 'sportifyCart'; // Usaremos una clave consistente
 
-    function renderCart() {
-        const cart = getCart();
-        cartItemsContainer.innerHTML = '';
+function getCart() {
+    return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+}
 
-        if (cart.length === 0) {
-            cartItemsContainer.innerHTML = '<p>Tu carrito está vacío.</p>';
-            cartSummary.innerHTML = '';
-            checkoutButton.style.display = 'none';
-            return;
-        }
+function saveCart(cart) {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+}
 
+function displayCart() {
+    const cart = getCart();
+    if (!cartItemsContainer || !cartTotalElement) return;
+
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p>Tu carrito está vacío.</p>';
+        cartTotalElement.textContent = '$0.00';
+        if (clearCartButton) clearCartButton.style.display = 'none';
+        if (goToCheckoutButton) goToCheckoutButton.style.display = 'none';
+    } else {
         let total = 0;
-        checkoutButton.style.display = 'block';
-
-        if (!itemTemplate) return; // Salir si la plantilla no existe
-
-        cart.forEach((item) => {
-            const subtotal = item.precio * item.quantity;
+        cartItemsContainer.innerHTML = cart.map(item => {
+            const subtotal = (item.precio / 100) * item.quantity;
             total += subtotal;
-
-            const templateClone = itemTemplate.content.cloneNode(true);
-            const itemElement = templateClone.querySelector('.cart-item');
-
-            itemElement.querySelector('.item-image').src = item.imagen_url;
-            itemElement.querySelector('.item-image').alt = item.nombre;
-            itemElement.querySelector('.item-name').textContent = item.nombre;
-            itemElement.querySelector('.item-price').textContent = `Precio: $${(item.precio / 100).toFixed(2)}`;
-            itemElement.querySelector('.item-quantity').textContent = item.quantity;
-            itemElement.querySelector('.item-subtotal').textContent = `Subtotal: $${(subtotal / 100).toFixed(2)}`;
-
-            // Asignar el ID del producto a los botones para que funcionen los eventos
-            itemElement.querySelector('.decrease-btn').dataset.id = item.id_producto;
-            itemElement.querySelector('.increase-btn').dataset.id = item.id_producto;
-            itemElement.querySelector('.remove-btn').dataset.id = item.id_producto;
-
-            cartItemsContainer.appendChild(templateClone);
-        });
-
-        cartSummary.innerHTML = `<h3>Total: $${(total / 100).toFixed(2)}</h3>`;
+            return `
+                <div class="cart-item">
+                    <img src="${item.imagen_url}" alt="${item.nombre}" width="100">
+                    <div class="item-details">
+                        <h3>${item.nombre}</h3>
+                        <p>Cantidad: ${item.quantity}</p>
+                    </div>
+                    <p class="item-subtotal"><strong>$${subtotal.toFixed(2)}</strong></p>
+                </div>
+            `;
+        }).join('');
+        cartTotalElement.textContent = `$${total.toFixed(2)}`;
+        if (clearCartButton) clearCartButton.style.display = 'block';
+        if (goToCheckoutButton) goToCheckoutButton.style.display = 'block';
     }
+}
 
-    checkoutButton.addEventListener('click', async () => {
-        const cart = getCart();
-        if (cart.length === 0) return showToast("Tu carrito está vacío.", "error");
+function clearCart() {
+    localStorage.removeItem(CART_KEY);
+    displayCart();
+    showToast('El carrito ha sido vaciado.', 'success');
+}
 
-        if (!supabase) return showToast("Error de configuración. No se puede proceder al pago.", "error");
+function goToCheckout() {
+    const cart = getCart();
+    if (cart.length === 0) {
+        showToast('Tu carrito está vacío.', 'error');
+        return;
+    }
+    
+    // Redirige a la página del formulario de envío
+    window.location.href = '/checkout.html';
+}
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            showToast("Debes iniciar sesión para poder pagar.", "error");
-            window.location.href = '/login.html';
-            return;
-        }
+// Asignar eventos a los botones
+if (clearCartButton) {
+    clearCartButton.addEventListener('click', clearCart);
+}
 
-        checkoutButton.textContent = 'Procesando...';
-        checkoutButton.disabled = true;
+if (goToCheckoutButton) {
+    goToCheckoutButton.addEventListener('click', goToCheckout);
+}
 
-        fetch('/api/create-checkout-session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ items: cart })
-        })
-        .then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err)))
-        .then(({ url }) => {
-            window.location.href = url;
-        })
-        .catch(error => {
-            console.error('Error en el pago:', error);
-            showToast(`Error al procesar el pago: ${error.error || 'Intenta de nuevo.'}`, 'error');
-            checkoutButton.textContent = 'Pagar ahora';
-            checkoutButton.disabled = false;
-        });
-    });
-
-    // --- Delegación de Eventos ---
-    // Un solo listener en el contenedor para manejar todos los clics internos.
-    cartItemsContainer.addEventListener('click', (event) => {
-        const target = event.target;
-        const productId = target.dataset.id;
-
-        if (target.matches('.quantity-btn')) {
-            const change = parseInt(target.dataset.change, 10);
-            updateProductQuantity(productId, change);
-            renderCart(); // Volver a renderizar después de actualizar
-        }
-
-        if (target.matches('.remove-btn')) {
-            removeProductFromCart(productId);
-            renderCart(); // Volver a renderizar después de actualizar
-        }
-    });
-
-    renderCart();
-});
+// Mostrar el carrito cuando la página cargue
+document.addEventListener('DOMContentLoaded', displayCart);
