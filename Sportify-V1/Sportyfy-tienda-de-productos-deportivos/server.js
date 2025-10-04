@@ -47,7 +47,9 @@ const adminMiddleware = async (req, res, next) => {
 
 // --- 2. RUTAS (ENDPOINTS) DE LA API ---
 
-// Ruta para que el frontend obtenga la configuración pública de Supabase
+// Ruta para obtener todos los productos
+
+// Ruta para enviar la configuración pública al frontend
 app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL,
@@ -55,7 +57,6 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// Ruta para obtener todos los productos
 app.get('/api/products', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -93,13 +94,13 @@ app.get('/api/marcas', async (req, res) => {
 // Ruta para AÑADIR un nuevo producto (protegida)
 app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const { nombre, descripcion, precio, imagen_url, stock, categoria_id, marca_id } = req.body;
-    if (!nombre || !precio || !imagen_url || stock === undefined) {
+    const { name, description, price, imageUrl, stock, categoria_id, marca_id } = req.body;
+    if (!name || !price || !imageUrl || stock === undefined) {
       return res.status(400).json({ error: 'Nombre, precio, imagen y stock son requeridos.' });
     }
     const { data, error } = await supabase
       .from('productos')
-      .insert([{ nombre, descripcion, precio, imagen_url, stock, categoria_id, marca_id }])
+      .insert([{ name, description, price, imageUrl, stock, categoria_id, marca_id }])
       .select();
     if (error) throw error;
     res.status(201).json(data[0]);
@@ -172,12 +173,6 @@ app.post('/api/send-email', async (req, res) => {
     console.error('Error al enviar correo:', error);
     res.status(500).json({ error: 'Error interno al enviar el correo.' });
   }
-});
-
-// --- 6. MANEJO DE RUTAS HTML ---
-// Esta ruta "catch-all" debe ir después de todas las rutas de la API.
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'templates', 'index.html'));
 });
 
 // --- 5. INICIAR EL SERVIDOR ---

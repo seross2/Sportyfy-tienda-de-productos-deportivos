@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrito de Compras - SportifyStore</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Seguir Comprando</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Tu Carrito de Compras</h2>
+            <section id="cart">
+                <div id="cart-items-container">
+                    <!-- Los items del carrito se cargarán aquí -->
+                </div>
+                <div id="cart-summary">
+                    <!-- El total se mostrará aquí -->
+                </div>
+                <button id="checkout-button" style="width: auto; padding: 10px 20px; margin-top: 1rem;">Pagar
+                    ahora</button>
+            </section>
+
+            <!-- Plantilla para un item del carrito -->
+            <template id="cart-item-template">
+                <div class="cart-item">
+                    <img src="" alt="" class="item-image" width="100">
+                    <div class="item-details">
+                        <h3 class="item-name"></h3>
+                        <p class="item-price"></p>
+                    </div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn decrease-btn" data-change="-1">-</button>
+                        <span class="item-quantity"></span>
+                        <button class="quantity-btn increase-btn" data-change="1">+</button>
+                    </div>
+                    <p class="item-subtotal"></p>
+                    <button class="remove-btn">×</button>
+                </div>
+            </template>
+
+        </div>
+    </main>
+
+    <script type="module" src="/cart.js"></script>
+</body>
+
+</html>
