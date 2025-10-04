@@ -1,10 +1,10 @@
-# Sportify Store - Tienda de Productos Deportivos
+﻿# Sportify Store - Guía para Colaboradores
 
-Bienvenido a Sportify Store, una aplicación web completa para una tienda de productos deportivos. Este proyecto incluye un backend con Node.js, una base de datos y autenticación con Supabase, y una pasarela de pagos integrada con Stripe.
+Bienvenido al proyecto Sportify Store. Este documento es la guía central para configurar, ejecutar y contribuir al desarrollo de la aplicación.
 
 ## Características
 
-- **Catálogo de Productos:** Visualización de productos cargados desde la base de datos.
+- **Catálogo de Productos:** Visualización de productos con filtros de búsqueda.
 - **Autenticación de Usuarios:** Registro e inicio de sesión de usuarios utilizando Supabase Auth.
 - **Roles de Usuario:** Diferenciación entre usuarios normales y administradores.
 - **Panel de Administrador:** Interfaz protegida para que los administradores puedan añadir nuevos productos a la tienda.
@@ -23,23 +23,25 @@ Bienvenido a Sportify Store, una aplicación web completa para una tienda de pro
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución
+## 🚀 Primeros Pasos: Configuración Local
 
 Sigue estos pasos para configurar y ejecutar el proyecto en tu entorno local.
 
 ### Requisitos Previos
 
 - **Node.js:** Asegúrate de tener instalada una versión reciente (v18.x o superior recomendada).
-- **Git:** Necesario para clonar el repositorio.
-- **Cuentas de Servicios:** Necesitarás cuentas en Supabase y Stripe para obtener las claves de API.
+- **Git:** Necesario para clonar el repositorio y gestionar los cambios.
+- **Cuentas de Servicios:** Necesitarás cuentas gratuitas en:
+  - [Supabase](https://supabase.com/) (para la base de datos y autenticación).
+  - [Stripe](https://stripe.com/) (para la pasarela de pagos).
 
 ### 1. Clonar el Repositorio
 
 Abre tu terminal y clona el proyecto en tu máquina.
 
 ```bash
-git clone <URL_DEL_REPOSITORIO_GIT>
-cd Sportyfy-tienda-de-productos-deportivos
+git clone https://github.com/tu-usuario/Sportify-tienda-NUEVO.git
+cd Sportify-tienda-NUEVO
 ```
 
 ### 2. Instalar Dependencias
