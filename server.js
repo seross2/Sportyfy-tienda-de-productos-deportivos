@@ -190,7 +190,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
       id_pedido: pedido.id_pedido,
       id_producto: item.id_producto,
       cantidad: item.quantity,
-      precio_unitario: item.precio // Guardamos el precio al momento de la compra
+      precio_unitario: item.precio / 100 // Convertir de centavos a la unidad principal para la DB
     }));
 
     const { error: detalleError } = await supabase.from('pedido_detalle').insert(detallesPedido);
@@ -224,7 +224,11 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
     // 4. Devolver la URL de la sesión de Stripe al frontend
     res.json({ url: session.url });
   } catch (error) {
-    res.status(500).json({ error: 'Error al crear el pedido', details: error.message });
+    // --- MEJORA DE DIAGNÓSTICO ---
+    // Imprime el error completo en la consola del servidor para un análisis detallado.
+    console.error('--- ERROR DETALLADO AL CREAR PEDIDO ---');
+    console.error(error);
+    res.status(500).json({ error: 'Error al crear el pedido', details: error.message || 'Error desconocido en el servidor.' });
   }
 });
 

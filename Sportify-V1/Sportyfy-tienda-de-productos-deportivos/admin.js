@@ -48,7 +48,7 @@ async function handleAddProduct(event) {
   const productData = {
     nombre: formData.get('nombre'),
     descripcion: formData.get('descripcion'),
-    precio: parseInt(formData.get('precio') * 100, 10), // Guardar en centavos
+    precio: Math.round(parseFloat(formData.get('precio')) * 100), // Guardar en centavos de forma segura
     imagen_url: formData.get('imagen_url'),
     stock: parseInt(formData.get('stock'), 10),
     id_categoria: parseInt(formData.get('id_categoria'), 10),
