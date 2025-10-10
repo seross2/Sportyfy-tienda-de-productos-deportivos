@@ -15,8 +15,8 @@ app.use(express.json());
 // Servir archivos estáticos (HTML, CSS, JS del cliente)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Apuntar a la carpeta correcta donde están los archivos del frontend.
-app.use(express.static(path.join(__dirname, 'Sportify-V1/Sportyfy-tienda-de-productos-deportivos/templates')));
+// Apuntar a la carpeta 'public'. Como server.js está en 'src', debemos subir un nivel ('..').
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Configuración de Supabase (para el servidor)
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -59,9 +59,24 @@ app.get('/api/config', (req, res) => {
 // Ruta para obtener todos los productos
 app.get('/api/products', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    // Construir la consulta dinámicamente basada en los filtros
+    let query = supabase
       .from('productos')
       .select('*, categorias(nombre), marcas(nombre)');
+
+    const { search, id_categoria, id_marca } = req.query;
+
+    if (search) {
+      query = query.ilike('nombre', `%${search}%`);
+    }
+    if (id_categoria) {
+      query = query.eq('id_categoria', id_categoria);
+    }
+    if (id_marca) {
+      query = query.eq('id_marca', id_marca);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     res.json(data);
   } catch (error) {

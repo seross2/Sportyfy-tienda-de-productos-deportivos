@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles de Envío - Sportify Store</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Productos</a></li>
+                    <li><a href="/cart.html">Volver al Carrito</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container checkout-container">
+            <div class="shipping-form">
+                <h2>Detalles de Envío</h2>
+                <form id="shipping-form">
+                    <p>Por favor, completa tus datos para la entrega.</p>
+                    <div>
+                        <label for="direccion_envio">Dirección Completa</label>
+                        <input type="text" id="direccion_envio" name="direccion_envio" required
+                            placeholder="Ej: Calle 10 # 20-30, Apto 501, Bogotá">
+                    </div>
+                    <div>
+                        <label for="telefono_contacto">Teléfono de Contacto</label>
+                        <input type="tel" id="telefono_contacto" name="telefono_contacto" required
+                            placeholder="Ej: 3001234567">
+                    </div>
+                    <div>
+                        <label for="notas">Notas Adicionales (Opcional)</label>
+                        <textarea id="notas" name="notas"
+                            placeholder="Ej: Entregar en portería, dejar con..."></textarea>
+                    </div>
+                    <button type="submit" id="continue-to-payment-btn" class="btn-primary">Continuar a Pagar</button>
+                </form>
+            </div>
+            <div class="order-summary">
+                <h3>Resumen de tu Pedido</h3>
+                <div id="summary-cart-items"></div>
+                <p>Total: <strong id="summary-cart-total">$0.00</strong></p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="/js/envio.js"></script>
+</body>
+
+</html>

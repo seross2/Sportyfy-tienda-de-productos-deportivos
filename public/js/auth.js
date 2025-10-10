@@ -1,7 +1,7 @@
 // c:\Users\sergi\OneDrive\Documentos\Sportify-tienda-NUEVO\Sportify-V1\Sportyfy-tienda-de-productos-deportivos\templates\auth.js
-import { getSupabaseClient } from '/supabaseClient.js';
-import { syncCartOnLogin } from '/cart-logic.js';
-import { showToast } from '/utils.js';
+import { getSupabaseClient } from '/js/supabaseClient.js'; // Esta ya estaba bien
+import { syncCartOnLogin } from '/js/cart-logic.js'; // Esta ya estaba bien
+import { showToast } from '/js/utils.js'; // Esta ya estaba bien
 
 // --- INICIALIZACIÓN SEGURA DE SUPABASE ---
 let supabase;
@@ -132,18 +132,13 @@ async function updateUserUI(session) {
             await syncCartOnLogin();
 
             const { data: profile } = await supabase.from('profiles').select('rol').eq('id', session.user.id).single();
-            if (profile && profile.rol === 'admin') {
-                // Cargar el panel de admin
-                try {
-                    const res = await fetch('/admin.html');
-                    const html = await res.text();
-                    mainContent.innerHTML = html; // 1. Inserta el HTML del panel
-
-                    // 2. SOLO DESPUÉS de insertar el HTML, carga el script
-                    // Esto garantiza que los 'select' existan cuando admin.js se ejecute.
-                    loadAdminScript();
-                } catch (error) {
-                    console.error("Error al cargar el panel de admin:", error);
+            // Si es admin, añade un enlace al panel en la navegación
+            if (profile && profile.rol === 'admin' && !document.getElementById('admin-link')) {
+                const navList = document.querySelector('header nav ul');
+                if (navList) {
+                    const adminLi = document.createElement('li');
+                    adminLi.innerHTML = `<a href="/admin.html" id="admin-link">Panel Admin</a>`;
+                    navList.appendChild(adminLi);
                 }
             }
         }
@@ -156,16 +151,6 @@ async function updateUserUI(session) {
 function handleLogoutRedirect(event) {
     // Redirigir al cerrar sesión para asegurar que la UI se limpie.
     if (event === 'SIGNED_OUT') window.location.href = '/';
-}
-
-function loadAdminScript() {
-    // Carga el script solo si no ha sido cargado antes
-    if (!document.querySelector('script[src="/admin.js"]')) {
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = '/admin.js';
-        document.body.appendChild(script);
-    }
 }
 
 async function main() {
@@ -196,7 +181,7 @@ async function main() {
     // 4. Ligar los manejadores a los formularios que existan en la página
     for (const formId in formHandlers) {
         const form = document.getElementById(formId);
-        if (form) formHandlersformId;
+        if (form) formHandlers[formId](form);
     }
 }
 

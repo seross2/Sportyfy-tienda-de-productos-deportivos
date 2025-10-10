@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sportify Store</title>
-    <link rel="stylesheet" href="/styles.css">
+    <!-- RUTA CSS CORREGIDA -->
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
@@ -39,8 +40,8 @@
                         </select>
                         <button id="reset-filters">Limpiar Filtros</button>
                     </div>
-                    <div class="product-grid">
-                        <!-- Los productos se cargarán aquí dinámicamente -->
+                    <!-- ID CORREGIDO para que main.js pueda encontrar este contenedor -->
+                    <div id="product-list" class="product-grid">
                     </div>
                 </section>
             </div>
@@ -52,8 +53,12 @@
         style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
     </div>
 
-    <script type="module" src="/app.js" defer></script>
-    <script type="module" src="/auth.js" defer></script>
+    <!-- RUTAS JS CORREGIDAS Y ORDENADAS -->
+    <script type="module" src="/js/utils.js"></script>
+    <script type="module" src="/js/supabaseClient.js"></script>
+    <script type="module" src="/js/cart-logic.js"></script>
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/main.js"></script>
 </body>
 
 </html>

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carrito de Compras - Sportify Store</title>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
@@ -40,9 +40,13 @@
         style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
     </div>
 
-    <!-- Asegúrate de que el script se llame cart.js y no cart-logic.js -->
-    <script type="module" src="/cart.js"></script>
-    <script type="module" src="/auth.js"></script>
+    <!-- Scripts unificados para la página del carrito -->
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module">
+        import { renderCartPage } from '/js/cart-logic.js';
+        // Asegurarse de que el DOM está listo antes de renderizar
+        document.addEventListener('DOMContentLoaded', renderCartPage);
+    </script>
 </body>
 
 </html>

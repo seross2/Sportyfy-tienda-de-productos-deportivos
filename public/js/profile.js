@@ -1,5 +1,5 @@
-import { getSupabaseClient } from '/supabaseClient.js';
-import { showToast } from '/utils.js';
+import { getSupabaseClient } from '/js/supabaseClient.js';
+import { showToast } from '/js/utils.js';
 
 async function loadProfileData() {
     const supabase = await getSupabaseClient();
