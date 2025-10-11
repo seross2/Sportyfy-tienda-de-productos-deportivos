@@ -18,6 +18,11 @@ const __dirname = path.dirname(__filename);
 // Apuntar a la carpeta 'public'. Como server.js está en 'src', debemos subir un nivel ('..').
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Ruta para servir el index.html desde la nueva carpeta /html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'html', 'index.html'));
+});
+
 // Configuración de Supabase (para el servidor)
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -205,7 +210,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
       id_pedido: pedido.id_pedido,
       id_producto: item.id_producto,
       cantidad: item.quantity,
-      precio_unitario: item.precio / 100 // Convertir de centavos a la unidad principal para la DB
+      precio_unitario: item.precio // El precio ya está en la unidad principal (ej: 1290.00)
     }));
 
     const { error: detalleError } = await supabase.from('pedido_detalle').insert(detallesPedido);
@@ -219,7 +224,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
           name: item.nombre,
           images: [item.imagen_url],
         },
-        unit_amount: item.precio,
+        unit_amount: Math.round(item.precio * 100), // Convertir a centavos y redondear
       },
       quantity: item.quantity,
     }));
@@ -229,8 +234,8 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
       payment_method_types: ['card'],
       line_items: line_items,
       mode: 'payment',
-      success_url: `http://localhost:${PORT}/pago-exitoso.html`,
-      cancel_url: `http://localhost:${PORT}/pago-cancelado.html`,
+      success_url: `http://localhost:${PORT}/html/pago-exitoso.html`,
+      cancel_url: `http://localhost:${PORT}/html/pago-cancelado.html`,
       metadata: {
         id_pedido: pedido.id_pedido, // ¡Muy importante para el webhook!
       }

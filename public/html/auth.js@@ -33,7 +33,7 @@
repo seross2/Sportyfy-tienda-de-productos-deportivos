@@ -27,10 +27,8 @@ function handleLoginForm(form) {
             submitButton.textContent = 'Iniciar Sesión';
         } else {
             // Sincronizar el carrito ANTES de redirigir
-            showToast('Sincronizando tu carrito...', 'success');
             await syncCartOnLogin();
-            showToast('¡Bienvenido de nuevo!', 'success');
-            window.location.href = '/'; // Redirigir a la página principal
+            window.location.href = '/html/index.html'; // Redirigir a la página principal
         }
     });
 }
@@ -38,15 +36,10 @@ function handleLoginForm(form) {
 function handleRegisterForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Registrando...';
-
         const formData = new FormData(form);
         const userData = {
             full_name: formData.get('name'),
-            username: formData.get('username'), // ¡Este campo es crucial!
-            identification: formData.get('identification'),
+            username: formData.get('username'),
         };
 
         if (!supabase) return showToast('Error de configuración de Supabase.');
@@ -58,30 +51,15 @@ function handleRegisterForm(form) {
         });
 
         if (error) {
-                // ¡IMPORTANTE! Esto mostrará el error detallado en la consola del navegador.
-                console.error('--- ERROR DETALLADO DE SUPABASE AL REGISTRAR ---', error);
-
                 // Mejora para dar un mensaje más útil
-                if (error.message.includes('duplicate key value violates unique constraint')) {
-                    if (error.message.includes('profiles_username_key')) {
+                if (error.message.includes('duplicate key value violates unique constraint "profiles_username_key"')) {
                     showToast('Este nombre de usuario ya está en uso. Por favor, elige otro.', 'error');
-                    } else if (error.message.includes('users_email_key')) {
-                        showToast('Este correo electrónico ya está registrado.', 'error');
-                    } else {
-                        showToast('Error: El usuario o correo ya existe.', 'error');
-                    }
                 } else {
-                    showToast(`Error en el registro: ${error.message}`, 'error');
+                    showToast(error.message, 'error');
                 }
-                submitButton.disabled = false;
-                submitButton.textContent = 'Registrarse';
         } else {
-            // NO sincronizamos el carrito aquí para evitar la condición de carrera.
-            // El usuario iniciará sesión después de confirmar su correo, y ahí se sincronizará.
-            showToast('¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.', 'success');
+            showToast('¡Registro exitoso! Revisa tu correo para confirmar.', 'success');
             form.reset();
-            submitButton.disabled = false;
-            submitButton.textContent = 'Registrarse';
         }
     });
 }
@@ -149,12 +127,30 @@ async function updateUserUI(session) {
 
         // Verificar si es admin y si estamos en la página principal para cargar el panel
         if (mainContent) {
-            // IMPORTANTE: La consulta a 'profiles' se ha movido a app.js para evitar la condición de carrera durante el registro.
+            if (!supabase) return;
+            // Al cargar la página con sesión, sincronizamos el carrito de la DB a localStorage
+            await syncCartOnLogin();
+
+            const { data: profile } = await supabase.from('profiles').select('rol').eq('id', session.user.id).single();
+            // Si es admin, añade un enlace al panel en la navegación
+            if (profile && profile.rol === 'admin' && !document.getElementById('admin-link')) {
+                const navList = document.querySelector('header nav ul');
+                if (navList) {
+                    const adminLi = document.createElement('li');
+                    adminLi.innerHTML = `<a href="/html/admin.html" id="admin-link">Panel Admin</a>`;
+                    navList.appendChild(adminLi);
+                }
+            }
         }
     } else {
         // Usuario no logueado
         if (loginLink) loginLink.innerHTML = '<a href="/html/login.html">Login</a>';
     }
+}
+
+function handleLogoutRedirect(event) {
+    // Redirigir al cerrar sesión para asegurar que la UI se limpie.
+    if (event === 'SIGNED_OUT') window.location.href = '/html/index.html';
 }
 
 async function main() {

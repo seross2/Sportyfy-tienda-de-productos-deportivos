@@ -221,20 +221,43 @@ if (resetFiltersButton) resetFiltersButton.addEventListener('click', () => {
     brandFilter.value = '';
     applyFilters();
 });
-// 3. Iniciar la carga de productos
-async function initProductsPage() {
-    await fetchProducts();
+
+async function checkAdminRole() {
     const supabase = await getSupabaseClient();
     if (!supabase) return;
 
-    // Mostrar formularios de reseña si el usuario está logueado
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        document.querySelectorAll('.review-form').forEach(form => form.style.display = 'block');
+    if (!session) return;
+
+    const { data: profile } = await supabase.from('profiles').select('rol').eq('id', session.user.id).single();
+    if (profile && profile.rol === 'admin' && !document.getElementById('admin-link')) {
+        const navList = document.querySelector('header nav ul');
+        if (navList) {
+            const adminLi = document.createElement('li');
+            adminLi.innerHTML = `<a href="/html/admin.html" id="admin-link">Panel Admin</a>`;
+            navList.appendChild(adminLi);
+        }
     }
+}
+
+// 3. Iniciar la carga de productos
+async function initProductsPage() {
+    await fetchProducts();
 
     // Cargar los filtros
     await populateFilters();
+
+    // Comprobar si el usuario es admin para mostrar el enlace
+    await checkAdminRole();
+
+    // Mostrar formularios de reseña si el usuario está logueado
+    const supabase = await getSupabaseClient();
+    if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            document.querySelectorAll('.review-form').forEach(form => form.style.display = 'block');
+        }
+    }
 }
 
 initProductsPage();

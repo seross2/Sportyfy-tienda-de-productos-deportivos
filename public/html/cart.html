@@ -14,9 +14,9 @@
             <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
             <nav>
                 <ul>
-                    <li><a href="/">Productos</a></li>
-                    <li><a href="/profile.html">Mi Perfil</a></li>
-                    <li id="login-link"><a href="/login.html">Login</a></li>
+                    <li><a href="/html/index.html">Productos</a></li>
+                    <li><a href="/html/profile.html">Mi Perfil</a></li>
+                    <li id="login-link"><a href="/html/login.html">Login</a></li>
                 </ul>
             </nav>
         </div>
@@ -40,12 +40,14 @@
         style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
     </div>
 
-    <!-- Scripts unificados para la página del carrito -->
+    <!-- Scripts para la página del carrito -->
+    <script type="module" src="/js/utils.js"></script>
+    <script type="module" src="/js/supabaseClient.js"></script>
+    <script type="module" src="/js/cart-logic.js"></script>
     <script type="module" src="/js/auth.js"></script>
     <script type="module">
-        import { renderCartPage } from '/js/cart-logic.js';
-        // Asegurarse de que el DOM está listo antes de renderizar
-        document.addEventListener('DOMContentLoaded', renderCartPage);
+        import { renderCartPage } from '/js/cart-logic.js'; // La función ya está exportada
+        renderCartPage(); // Llamar a la función para que se ejecute
     </script>
 </body>
 

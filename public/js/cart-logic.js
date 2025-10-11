@@ -164,7 +164,7 @@ export function renderCartPage() {
             console.error('Item inválido en el carrito:', item);
             return; // Saltar este item
         }
-        const itemTotal = (item.precio / 100) * item.quantity;
+        const itemTotal = item.precio * item.quantity; // Esto ya estaba bien, lo mantenemos
         total += itemTotal;
 
         const cartItemElement = document.createElement('div');
@@ -173,7 +173,7 @@ export function renderCartPage() {
             <img src="${item.imagen_url}" alt="${item.nombre}" class="cart-item-image">
             <div class="cart-item-details">
                 <h4>${item.nombre}</h4>
-                <p>Precio: ${formatPrice(item.precio / 100)}</p>
+                <p>Precio: ${formatPrice(item.precio)}</p> <!-- Esto ya estaba bien, lo mantenemos -->
                 <div class="quantity-controls">
                     <button class="quantity-btn" data-id="${item.id_producto}" data-change="-1">-</button>
                     <span>${item.quantity}</span>
@@ -236,11 +236,11 @@ if (goToCheckoutButton) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       showToast('Debes iniciar sesión para continuar.', 'error');
-      window.location.href = '/login.html?redirect=/envio.html'; // Redirigir al login y luego al envío
+      window.location.href = '/html/login.html?redirect=/html/envio.html'; // Redirigir al login y luego al envío
       return;
     }
 
     // Redirigir a la página de detalles de envío
-    window.location.href = '/envio.html';
+    window.location.href = '/html/envio.html';
   });
 }

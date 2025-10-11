@@ -23,11 +23,11 @@ function renderOrderSummary() {
 
     let total = 0;
     summaryCartItems.innerHTML = cart.map(item => {
-        total += (item.precio / 100) * item.quantity;
+        total += item.precio * item.quantity;
         return `
             <div class="summary-item">
                 <span>${item.nombre} (x${item.quantity})</span>
-                <span>${formatPrice((item.precio / 100) * item.quantity)}</span>
+                <span>${formatPrice(item.precio * item.quantity)}</span>
             </div>
         `;
     }).join('');
@@ -49,7 +49,7 @@ async function handleFormSubmit(event) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
         alert('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
-        window.location.href = '/login.html';
+        window.location.href = '/html/login.html';
         return;
     }
 
