@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles del Producto - Sportify Store</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Volver a la tienda</a></li>
+                    <li><a href="/cart.html">Carrito</a></li>
+                    <li id="login-link"><a href="/login.html">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- El contenido del producto se cargará aquí -->
+            <div id="product-detail-container" class="product-detail-layout">
+                <!-- Plantilla de carga -->
+                <p>Cargando producto...</p>
+            </div>
+
+            <!-- Sección de Reseñas -->
+            <div id="reviews-section" class="reviews-container">
+                <h2>Reseñas del Producto</h2>
+                <div id="reviews-list">
+                    <!-- Las reseñas se cargarán aquí -->
+                </div>
+
+                <div class="review-form-container">
+                    <button id="toggle-review-form-btn" class="btn btn-secondary">Escribir una reseña</button>
+                    
+                    <!-- Formulario para añadir una nueva reseña (oculto por defecto) -->
+                    <form id="review-form" style="display: none;">
+                        <h3>Deja tu reseña</h3>
+                        <fieldset id="review-fieldset">
+                            <p>Solo los usuarios que han comprado este producto pueden dejar una reseña.</p>
+                            <div class="star-rating">
+                                <input type="radio" id="star5" name="puntuacion" value="5" required /><label for="star5">&#9733;</label>
+                                <input type="radio" id="star4" name="puntuacion" value="4" /><label for="star4">&#9733;</label>
+                                <input type="radio" id="star3" name="puntuacion" value="3" /><label for="star3">&#9733;</label>
+                                <input type="radio" id="star2" name="puntuacion" value="2" /><label for="star2">&#9733;</label>
+                                <input type="radio" id="star1" name="puntuacion" value="1" /><label for="star1">&#9733;</label>
+                            </div>
+                            <textarea name="comentario" placeholder="Escribe tu comentario aquí..." rows="4" required></textarea>
+                            <button type="submit" class="btn btn-primary">Enviar Reseña</button>
+                        </fieldset>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-message"></div>
+
+    <!-- Scripts para esta página -->
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/product-details.js"></script>
+</body>
+
+</html>

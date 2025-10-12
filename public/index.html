@@ -12,7 +12,7 @@
 <body>
     <header>
         <div class="container">
-            <h1>Sportify Store</h1>
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
                 <ul>
                     <li><a href="/">Productos</a></li>
@@ -38,6 +38,10 @@
                         <select id="brand-filter">
                             <option value="">Todas las marcas</option>
                         </select>
+                        <div class="price-filter-container">
+                            <label for="price-filter">Precio máximo: <span id="price-output"></span></label>
+                            <input type="range" id="price-filter" min="600" max="3000" step="100" value="3000">
+                        </div>
                         <button id="reset-filters">Limpiar Filtros</button>
                     </div>
                     <!-- ID CORREGIDO para que main.js pueda encontrar este contenedor -->
@@ -49,9 +53,7 @@
     </main>
 
     <!-- Contenedor de notificaciones global -->
-    <div id="message"
-        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
-    </div>
+    <div id="toast-message"></div>
 
     <!-- RUTAS JS CORREGIDAS Y ORDENADAS -->
     <script type="module" src="/js/utils.js"></script>

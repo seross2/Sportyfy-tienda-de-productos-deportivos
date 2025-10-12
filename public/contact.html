@@ -5,37 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contacto - SportifyStore</title>
-    <link rel="stylesheet" href="/styles.css">
-    <style>
-        .contact-options {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-
-        .contact-options a {
-            padding: 1rem 2rem;
-            text-decoration: none;
-            color: white;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-
-        .whatsapp-btn {
-            background-color: #25D366;
-        }
-
-        .email-btn {
-            background-color: #007bff;
-        }
-    </style>
+    <!-- RUTA CSS CORREGIDA -->
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
     <header>
         <div class="container">
-            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
                 <ul>
                     <li><a href="/">Volver a la tienda</a></li>
@@ -46,7 +23,7 @@
 
     <main>
         <div class="container">
-            <h2 style="text-align: center;">Ponte en Contacto con Nosotros</h2>
+            <h2>Ponte en Contacto con Nosotros</h2>
             <div class="contact-options">
                 <!-- REEMPLAZA el número de teléfono con el tuyo, incluyendo el código de país -->
                 <a href="https://wa.me/573153066972" target="_blank" class="whatsapp-btn">Contactar por WhatsApp</a>
@@ -57,16 +34,14 @@
                 <div><label for="email">Tu Correo</label><input type="email" id="email" name="email" required></div>
                 <div><label for="message">Mensaje</label><textarea id="message" name="message" rows="6"
                         required></textarea></div>
-                <button type="submit">Enviar Mensaje</button>
+                <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
             </form>
         </div>
     </main>
 
-    <div id="message"
-        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
-    </div>
+    <div id="toast-message"></div>
 
-    <script type="module" src="/contact.js" defer></script>
+    <script type="module" src="/js/contact.js" defer></script>
 </body>
 
 </html>

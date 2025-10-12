@@ -1,21 +1,31 @@
 import express from 'express';
 import * as dotenv from 'dotenv';
-dotenv.config();
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import nodemailer from 'nodemailer';
 import { fileURLToPath } from 'url';
 
-// --- 1. CONFIGURACIÓN ---
+// --- 1. DIAGNÓSTICO DE VARIABLES DE ENTORNO ---
+console.log('--- Iniciando diagnóstico de .env ---');
+const result = dotenv.config(); // Carga el .env desde la raíz del proyecto
+
+if (result.error) {
+  console.error('ERROR: dotenv no pudo cargar el archivo .env. Causa:', result.error);
+  throw result.error;
+}
+
+console.log('Valor de SUPABASE_URL leído:', process.env.SUPABASE_URL);
+console.log('--- Fin del diagnóstico ---');
+
 const app = express();
 const PORT = 3000;
 app.use(express.json());
 
 // Servir archivos estáticos (HTML, CSS, JS del cliente)
+// Apuntar a la carpeta 'public'. Como server.js está en 'src', debemos subir un nivel ('..').
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Apuntar a la carpeta 'public'. Como server.js está en 'src', debemos subir un nivel ('..').
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Configuración de Supabase (para el servidor)
@@ -62,9 +72,9 @@ app.get('/api/products', async (req, res) => {
     // Construir la consulta dinámicamente basada en los filtros
     let query = supabase
       .from('productos')
-      .select('*, categorias(nombre), marcas(nombre)');
+      .select('*, categorias(nombre), marcas(nombre), reseñas(puntuacion)');
 
-    const { search, id_categoria, id_marca } = req.query;
+    const { search, id_categoria, id_marca, max_precio } = req.query;
 
     if (search) {
       query = query.ilike('nombre', `%${search}%`);
@@ -75,12 +85,47 @@ app.get('/api/products', async (req, res) => {
     if (id_marca) {
       query = query.eq('id_marca', id_marca);
     }
+    if (max_precio) {
+      query = query.lte('precio', max_precio); // lte = Less Than or Equal
+    }
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json(data);
+
+    // Post-procesamiento para calcular el promedio de reseñas
+    const productsWithAvgRating = data.map(product => {
+      const reviews = product.reseñas || [];
+      let average_rating = 0;
+      if (reviews.length > 0) {
+        const totalScore = reviews.reduce((acc, review) => acc + review.puntuacion, 0);
+        average_rating = totalScore / reviews.length;
+      }
+      // Limpiamos el array de reseñas para no enviar datos innecesarios al frontend
+      const { reseñas, ...productData } = product;
+      return { ...productData, average_rating };
+    });
+
+    res.json(productsWithAvgRating);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener los productos', details: error.message });
+  }
+});
+
+// Ruta para obtener UN solo producto por ID
+app.get('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*, categorias(nombre), marcas(nombre)')
+      .eq('id_producto', id)
+      .single(); // .single() para obtener un solo objeto en lugar de un array
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Producto no encontrado.' });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener el producto', details: error.message });
   }
 });
 

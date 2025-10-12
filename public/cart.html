@@ -11,7 +11,7 @@
 <body>
     <header>
         <div class="container">
-            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
                 <ul>
                     <li><a href="/">Productos</a></li>
@@ -30,15 +30,13 @@
             </div>
             <div id="cart-summary" class="cart-summary-box">
                 <p>Total: <strong id="cart-total">$0.00</strong></p>
-                <button id="go-to-checkout-button" class="btn-primary">Hacer Pedido</button>
+                <button id="go-to-checkout-button" class="btn btn-primary">Hacer Pedido</button>
             </div>
-            <button id="clear-cart-button">Vaciar Carrito</button>
+            <button id="clear-cart-button" class="btn-text">Vaciar Carrito</button>
         </div>
     </main>
 
-    <div id="message"
-        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
-    </div>
+    <div id="toast-message"></div>
 
     <!-- Scripts unificados para la página del carrito -->
     <script type="module" src="/js/auth.js"></script>

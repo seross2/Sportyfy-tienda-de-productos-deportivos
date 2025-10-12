@@ -28,7 +28,8 @@ function handleLoginForm(form) {
         } else {
             // Sincronizar el carrito ANTES de redirigir
             await syncCartOnLogin();
-            window.location.href = '/'; // Redirigir a la página principal
+            // Forzar siempre la redirección a la página principal (index)
+            window.location.href = '/';
         }
     });
 }
@@ -36,18 +37,27 @@ function handleLoginForm(form) {
 function handleRegisterForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Creando cuenta...';
+
         const formData = new FormData(form);
+        const email = formData.get('email');
         const userData = {
+            // Estos nombres de campo coinciden con las columnas de tu tabla 'profiles'
             full_name: formData.get('name'),
             username: formData.get('username'),
         };
 
         if (!supabase) return showToast('Error de configuración de Supabase.');
 
-        const { error } = await supabase.auth.signUp({
-            email: formData.get('email'),
+     
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
             password: formData.get('password'),
-            options: { data: userData }
+            options: {
+                data: userData // Aquí se envían 'full_name' y 'username'
+            }
         });
 
         if (error) {
@@ -61,6 +71,9 @@ function handleRegisterForm(form) {
             showToast('¡Registro exitoso! Revisa tu correo para confirmar.', 'success');
             form.reset();
         }
+
+        submitButton.disabled = false;
+        submitButton.textContent = 'Crear Cuenta';
     });
 }
 
@@ -82,15 +95,20 @@ function handleForgotPasswordForm(form) {
             showToast(error.message, 'error');
         } else {
             showToast('Se ha enviado un enlace de recuperación a tu correo.', 'success');
+            form.reset();
         }
         submitButton.disabled = false;
-        submitButton.textContent = 'Enviar Enlace de Recuperación';
+        submitButton.textContent = 'Enviar Enlace';
     });
 }
 
 function handleResetPasswordForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+
         const password = new FormData(form).get('password');
         if (!supabase) return showToast('Error de configuración de Supabase.');
 
@@ -98,6 +116,8 @@ function handleResetPasswordForm(form) {
 
         if (error) {
             showToast(`Error al actualizar la contraseña: ${error.message}`, 'error');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Guardar Nueva Contraseña';
         } else {
             showToast('¡Contraseña actualizada con éxito! Ya puedes iniciar sesión.', 'success');
             setTimeout(() => {
@@ -154,34 +174,41 @@ function handleLogoutRedirect(event) {
 }
 
 async function main() {
-    // 0. Inicializar Supabase obteniendo las claves del backend
-    supabase = await getSupabaseClient();
+    try {
+        // 0. Inicializar Supabase obteniendo las claves del backend
+        supabase = await getSupabaseClient();
 
-    // Si la inicialización falla, no continuamos con la lógica de auth.
-    if (!supabase) return;
+        // Si la inicialización falla, no continuamos con la lógica de auth.
+        if (!supabase) {
+            throw new Error("No se pudo inicializar el cliente de Supabase.");
+        }
 
-    // 1. Configurar los formularios de la página actual
-    const formHandlers = {
-        'login-form': handleLoginForm,
-        'register-form': handleRegisterForm,
-        'forgot-password-form': handleForgotPasswordForm,
-        'reset-password-form': handleResetPasswordForm,
-    };
+        // 1. Configurar los formularios de la página actual
+        const formHandlers = {
+            'login-form': handleLoginForm,
+            'register-form': handleRegisterForm,
+            'forgot-password-form': handleForgotPasswordForm,
+            'reset-password-form': handleResetPasswordForm,
+        };
 
-    // 2. Escuchar cambios de autenticación para actualizar la UI
-    supabase.auth.onAuthStateChange((event, session) => {
-        handleLogoutRedirect(event);
+        // 2. Escuchar cambios de autenticación para actualizar la UI
+        supabase.auth.onAuthStateChange((event, session) => {
+            handleLogoutRedirect(event);
+            updateUserUI(session);
+        });
+
+        // 3. Verificar la sesión inicial al cargar la página
+        const { data: { session } } = await supabase.auth.getSession();
         updateUserUI(session);
-    });
 
-    // 3. Verificar la sesión inicial al cargar la página
-    const { data: { session } } = await supabase.auth.getSession();
-    updateUserUI(session);
-
-    // 4. Ligar los manejadores a los formularios que existan en la página
-    for (const formId in formHandlers) {
-        const form = document.getElementById(formId);
-        if (form) formHandlers[formId](form);
+        // 4. Ligar los manejadores a los formularios que existan en la página
+        for (const formId in formHandlers) {
+            const form = document.getElementById(formId);
+            if (form) formHandlers[formId](form);
+        }
+    } catch (error) {
+        console.error("Error crítico en la inicialización de la autenticación:", error);
+        showToast("Error de conexión con el servidor. Algunas funciones pueden no estar disponibles.", "error");
     }
 }
 
