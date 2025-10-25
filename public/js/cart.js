@@ -12,7 +12,11 @@ function renderCart() {
     cartContainer.innerHTML = ''; // Limpiar vista
 
     if (cart.length === 0) {
-        cartContainer.innerHTML = '<p>Tu carrito está vacío.</p>';
+        cartContainer.innerHTML = `
+            <div class="cart-empty-message">
+                <p>Tu carrito está vacío.</p>
+                <a href="/" class="btn btn-primary">Ver productos</a>
+            </div>`;
         cartTotalElement.textContent = formatPrice(0);
         goToCheckoutButton.disabled = true;
         return;

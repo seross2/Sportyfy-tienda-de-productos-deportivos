@@ -1,95 +1,170 @@
 import { getSupabaseClient } from '/js/supabaseClient.js';
 import { showToast } from '/js/utils.js';
 
+let supabase;
+
 /**
- * Popula un elemento <select> con opciones desde una API.
- * @param {HTMLElement} selectElement El elemento <select> a poblar.
- * @param {string} endpoint El endpoint de la API para obtener los datos.
- * @param {string} valueField El nombre del campo para el `value` de la opción.
- * @param {string} textField El nombre del campo para el texto de la opción.
+ * Verifica si el usuario actual es un administrador.
+ * No redirige si no hay sesión, solo devuelve false.
+ * Redirige a la página principal si está logueado pero no es admin.
+ * @returns {boolean} true si el usuario es admin, false en caso contrario.
  */
-async function populateSelect(selectElement, endpoint, valueField, textField) {
-  try {
-    const response = await fetch(endpoint);
-    if (!response.ok) throw new Error(`No se pudo cargar ${endpoint}`);
-    const items = await response.json();
+async function checkAdminStatus() {
+    if (!supabase) {
+        console.error("Supabase no inicializado en admin.js");
+        return false;
+    }
 
-    selectElement.innerHTML = `<option value="">-- Selecciona una opción --</option>`; // Limpiar y poner opción por defecto
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    items.forEach(item => {
-      const option = document.createElement('option');
-      option.value = item[valueField];
-      option.textContent = item[textField];
-      selectElement.appendChild(option);
-    });
-  } catch (error) {
-    console.error(`Error populando ${selectElement.id}:`, error);
-    selectElement.innerHTML = `<option value="">Error al cargar</option>`;
-  }
+    if (sessionError || !session) {
+        // No hay sesión, no es admin. Permitir que la página cargue pero sin funcionalidades.
+        return false;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', session.user.id)
+        .single();
+
+    if (profileError || !profile || profile.rol !== 'admin') {
+        // Logueado pero no es admin, redirigir a la página principal.
+        showToast('Acceso denegado. No tienes permisos de administrador.', 'error');
+        window.location.href = '/';
+        return false; // Este return no se alcanzará debido a la redirección
+    }
+    // Si todo está bien, el usuario es admin y puede quedarse en la página.
+    console.log('Acceso de administrador verificado.');
+    return true;
+}
+
+/**
+ * Carga los datos para las tarjetas del dashboard (ej. total de productos).
+ */
+async function loadDashboardData() {
+    const totalProductsEl = document.getElementById('total-products');
+    // Puedes añadir más elementos aquí, como 'pending-orders', 'monthly-revenue'
+
+    if (totalProductsEl) {
+        try {
+            // Usamos rpc para contar, es más eficiente que traer todos los productos.
+            const { data, error, count } = await supabase
+                .from('productos')
+                .select('*', { count: 'exact', head: true }); // head:true para no traer datos, solo el conteo
+
+            if (error) throw error;
+
+            totalProductsEl.textContent = count;
+        } catch (error) {
+            console.error('Error cargando datos del dashboard:', error);
+            totalProductsEl.textContent = 'Error';
+        }
+    }
+    // Aquí podrías hacer más llamadas para las otras tarjetas
+}
+
+/**
+ * Popula los <select> del formulario con categorías y marcas.
+ */
+async function populateFormSelects() {
+    const categorySelect = document.getElementById('id_categoria');
+    const brandSelect = document.getElementById('id_marca');
+
+    if (!categorySelect || !brandSelect) return;
+
+    try {
+        const [catRes, brandRes] = await Promise.all([
+            fetch('/api/categorias'),
+            fetch('/api/marcas')
+        ]);
+        const categories = await catRes.json();
+        const brands = await brandRes.json();
+
+        categories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`);
+        brands.forEach(brand => brandSelect.innerHTML += `<option value="${brand.id_marca}">${brand.nombre}</option>`);
+
+    } catch (error) {
+        console.error("Error al cargar selectores del formulario:", error);
+    }
 }
 
 /**
  * Maneja el envío del formulario para añadir un nuevo producto.
  */
-async function handleAddProduct(event) {
-  event.preventDefault();
-  const form = event.target;
-  const submitButton = form.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
-  submitButton.textContent = 'Añadiendo...';
+function handleAddProductForm() {
+    const form = document.getElementById('add-product-form');
+    if (!form) return;
 
-  const supabase = await getSupabaseClient();
-  if (!supabase) return showToast('Error de configuración.', 'error');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Añadiendo...';
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return showToast('Tu sesión ha expirado. Por favor, recarga la página.', 'error');
+        const formData = new FormData(form);
+        const productData = Object.fromEntries(formData.entries());
 
-  const formData = new FormData(form);
-  const productData = {
-    nombre: formData.get('nombre'),
-    descripcion: formData.get('descripcion'),
-    precio: Math.round(parseFloat(formData.get('precio')) * 100), // Guardar en centavos de forma segura
-    imagen_url: formData.get('imagen_url'),
-    stock: parseInt(formData.get('stock'), 10),
-    id_categoria: parseInt(formData.get('id_categoria'), 10),
-    id_marca: parseInt(formData.get('id_marca'), 10),
-    id_talla: parseInt(formData.get('id_talla'), 10)
-  };
+        // El precio se envía en centavos
+        productData.precio = Number(productData.precio);
 
-  try {
-    const response = await fetch('/api/products', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify(productData)
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify(productData)
+            });
+
+            if (!response.ok) throw new Error((await response.json()).error || 'Error en el servidor');
+
+            showToast('Producto añadido con éxito', 'success');
+            form.reset();
+            loadDashboardData(); // Recargar datos del dashboard para ver el nuevo total
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Añadir Producto';
+        }
     });
+}
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'No se pudo añadir el producto.');
+/**
+ * Función de inicialización para la página de administración.
+ */
+async function initAdminPage() {
+    supabase = await getSupabaseClient();
+    const isAdmin = await checkAdminStatus();
+
+    if (!isAdmin) {
+        // Si no es admin (incluyendo no logueado), ocultar/deshabilitar funcionalidades
+        const dashboardSection = document.getElementById('dashboard');
+        const addProductFormSection = document.getElementById('add-product-form-section');
+        const container = document.querySelector('.admin-main .container');
+
+        if (dashboardSection) dashboardSection.remove();
+        if (addProductFormSection) addProductFormSection.remove();
+
+        if (container) {
+            container.innerHTML = `
+                <div class="admin-access-message-wrapper">
+                    <h2 class="admin-section-title">Acceso Restringido</h2>
+                    <p>Para acceder al panel de administración, debes iniciar sesión con una cuenta de administrador.</p>
+                    <a href="/login.html?redirect=/admin.html" class="btn btn-primary">Iniciar Sesión</a>
+                </div>
+            `;
+        }
+        return; // Detener la inicialización de funcionalidades de admin
     }
 
-    showToast('¡Producto añadido con éxito!', 'success');
-    form.reset();
-  } catch (error) {
-    showToast(error.message, 'error');
-  } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = 'Añadir Producto';
-  }
+    // Si es admin, cargar datos y formularios
+    loadDashboardData();
+    populateFormSelects();
+    handleAddProductForm();
 }
 
-// Inicializar el panel de administrador
-const addProductForm = document.getElementById('add-product-form');
-const categorySelect = document.getElementById('categoria');
-const brandSelect = document.getElementById('marca');
-const sizeSelect = document.getElementById('talla');
-
-if (addProductForm && categorySelect && brandSelect && sizeSelect) {
-  populateSelect(categorySelect, '/api/categorias', 'id_categoria', 'nombre');
-  populateSelect(brandSelect, '/api/marcas', 'id_marca', 'nombre');
-  populateSelect(sizeSelect, '/api/tallas', 'id_talla', 'valor');
-  addProductForm.addEventListener('submit', handleAddProduct);
-}
+document.addEventListener('DOMContentLoaded', initAdminPage);

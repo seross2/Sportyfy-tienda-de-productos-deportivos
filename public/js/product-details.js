@@ -93,16 +93,6 @@ async function handleReviewSubmit(event) {
     submitButton.disabled = true;
     submitButton.textContent = 'Enviando...';
 
-    const supabase = await getSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-        showToast('Debes iniciar sesión para dejar una reseña.', 'error');
-        submitButton.disabled = false;
-        submitButton.textContent = 'Enviar Reseña';
-        return;
-    }
-
     const formData = new FormData(reviewForm);
     const reviewData = {
         id_producto: parseInt(productId),
@@ -115,7 +105,6 @@ async function handleReviewSubmit(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify(reviewData)
         });
@@ -139,23 +128,11 @@ async function init() {
     if (productId) {
         await fetchProductDetails();
         await fetchReviews();
-
+        
         const toggleBtn = document.getElementById('toggle-review-form-btn');
         const reviewForm = document.getElementById('review-form');
-        const supabase = await getSupabaseClient();
-
+        
         toggleBtn.addEventListener('click', async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                showToast('Debes iniciar sesión para dejar una reseña.', 'error');
-                // Redirigir al login después de un momento, pasando la página actual para volver.
-                setTimeout(() => {
-                    window.location.href = `/login.html?redirect=${window.location.pathname}${window.location.search}`;
-                }, 2000);
-                return;
-            }
-
             // Mostrar u ocultar el formulario
             const isVisible = reviewForm.style.display === 'block';
             reviewForm.style.display = isVisible ? 'none' : 'block';

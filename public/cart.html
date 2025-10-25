@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carrito de Compras - Sportify Store</title>
+    <title>Tu Carrito - Sportify Store</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 
@@ -14,8 +14,8 @@
             <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
                 <ul>
-                    <li><a href="/">Productos</a></li>
-                    <li><a href="/profile.html">Mi Perfil</a></li>
+                    <li><a href="/">Tienda</a></li>
+                    <li><a href="/cart.html">Carrito</a></li>
                     <li id="login-link"><a href="/login.html">Login</a></li>
                 </ul>
             </nav>
@@ -24,27 +24,23 @@
 
     <main>
         <div class="container">
-            <h2>Tu Carrito de Compras</h2>
-            <div id="cart-items-container">
-                <!-- Los items del carrito se cargarán aquí dinámicamente -->
+            <h1>Tu Carrito de Compras</h1>
+            <div id="cart-items-container" class="cart-items-grid">
+                <!-- Los ítems del carrito se renderizarán aquí por JavaScript -->
             </div>
-            <div id="cart-summary" class="cart-summary-box">
-                <p>Total: <strong id="cart-total">$0.00</strong></p>
+            <div class="cart-summary">
+                <p>Total: <span id="cart-total">$0.00</span></p>
+                <button id="clear-cart-button" class="btn btn-secondary">Vaciar Carrito</button>
                 <button id="go-to-checkout-button" class="btn btn-primary">Hacer Pedido</button>
             </div>
-            <button id="clear-cart-button" class="btn-text">Vaciar Carrito</button>
         </div>
     </main>
 
     <div id="toast-message"></div>
 
-    <!-- Scripts unificados para la página del carrito -->
-    <script type="module" src="/js/auth.js"></script>
-    <script type="module">
-        import { renderCartPage } from '/js/cart-logic.js';
-        // Asegurarse de que el DOM está listo antes de renderizar
-        document.addEventListener('DOMContentLoaded', renderCartPage);
-    </script>
+    <!-- Scripts para esta página -->
+    <script type="module" src="/js/auth.js"></script> <!-- Para manejar el estado de login/logout en el header -->
+    <script type="module" src="/js/cart.js"></script> <!-- Script principal para la lógica del carrito -->
 </body>
 
 </html>
