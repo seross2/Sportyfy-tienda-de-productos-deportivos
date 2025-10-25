@@ -10,17 +10,24 @@
 
 <body>
     <header>
-        <nav>
-            <div class="logo">
-                <a href="/">Sportify Store</a>
-            </div>
-            <div class="nav-links">
-                <a href="/">Volver a la Tienda</a>
-            </div>
-        </nav>
+        <div class="container">
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Tienda</a></li>
+                    <li id="nav-user" class="dropdown" style="display: none;">
+                        <a href="#" id="nav-user-link">Admin</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="/profile.html">Mi Perfil</a></li>
+                            <li id="nav-logout"><a href="#" id="logout-button">Cerrar Sesión</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     </header>
     <main>
-        <section id="admin-panel">
+        <section id="admin-panel" class="container">
             <h2>Panel de Administrador</h2>
             <form id="add-product-form">
                 <h3>Añadir Nuevo Producto</h3>
@@ -29,13 +36,13 @@
                 <input type="number" name="precio" placeholder="Precio (en COP, ej: 500.00)" step="0.01" required>
                 <input type="text" name="imagen_url" placeholder="URL de la imagen" required>
                 <input type="number" name="stock" placeholder="Stock disponible" required>
-                <select id="categoria" name="id_categoria" required>
+                <select name="id_categoria" required>
                     <option value="">Cargando categorías...</option>
                 </select>
-                <select id="marca" name="id_marca" required>
+                <select name="id_marca" required>
                     <option value="">Cargando marcas...</option>
                 </select>
-                <select id="talla" name="id_talla" required>
+                <select name="id_talla" required>
                     <option value="">Cargando tallas...</option>
                 </select>
                 <button type="submit">Añadir Producto</button>
@@ -43,7 +50,10 @@
         </section>
     </main>
 
+    <div id="toast-message"></div>
+
     <!-- Cargar los scripts necesarios para la página de admin -->
+    <script type="module" src="/js/auth.js"></script>
     <script type="module" src="/js/admin.js"></script>
 </body>
 

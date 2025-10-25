@@ -11,12 +11,21 @@
 <body>
     <header>
         <div class="container">
-            <h1><a href="/" style="text-decoration: none; color: inherit;">Sportify Store</a></h1>
+            <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
                 <ul>
                     <li><a href="/">Productos</a></li>
                     <li><a href="/cart.html">Carrito</a></li>
-                    <li id="login-link"><a href="/login.html">Login</a></li>
+                    <li><a href="/contact.html">Contacto</a></li>
+                    <li id="nav-login" style="display: none;"><a href="/login.html">Login</a></li>
+                    <li id="nav-register" style="display: none;"><a href="/register.html">Registro</a></li>
+                    <li id="nav-user" class="dropdown" style="display: none;">
+                        <a href="#" id="nav-user-link">Usuario</a>
+                        <ul class="dropdown-menu">
+                            <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
+                            <li id="nav-logout"><a href="#" id="logout-button">Cerrar Sesión</a></li>
+                        </ul>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -36,9 +45,7 @@
         </div>
     </main>
 
-    <div id="message"
-        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 15px; border-radius: 5px; z-index: 1000; display: none;">
-    </div>
+    <div id="toast-message"></div>
 
     <script type="module" src="/js/auth.js"></script>
     <script type="module" src="/js/profile.js"></script>

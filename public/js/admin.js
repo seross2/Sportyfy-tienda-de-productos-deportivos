@@ -11,7 +11,8 @@ let supabase;
  */
 async function checkAdminStatus() {
     if (!supabase) {
-        console.error("Supabase no inicializado en admin.js");
+        // El cliente de Supabase no se pudo inicializar. Esto ya se reportó al usuario en initAdminPage.
+        // Simplemente retornamos false para que la UI de "Acceso Restringido" se muestre.
         return false;
     }
 
@@ -22,16 +23,19 @@ async function checkAdminStatus() {
         return false;
     }
 
+    // CORRECCIÓN: Consultar el rol desde la tabla 'profiles' en lugar de los metadatos.
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('rol')
         .eq('id', session.user.id)
         .single();
 
-    if (profileError || !profile || profile.rol !== 'admin') {
+    if (profileError || !profile) return false;
+
+    const userRole = profile.rol;
+
+    if (userRole !== 'admin') {
         // Logueado pero no es admin, redirigir a la página principal.
-        showToast('Acceso denegado. No tienes permisos de administrador.', 'error');
-        window.location.href = '/';
         return false; // Este return no se alcanzará debido a la redirección
     }
     // Si todo está bien, el usuario es admin y puede quedarse en la página.
@@ -68,21 +72,34 @@ async function loadDashboardData() {
  * Popula los <select> del formulario con categorías y marcas.
  */
 async function populateFormSelects() {
-    const categorySelect = document.getElementById('id_categoria');
-    const brandSelect = document.getElementById('id_marca');
+    const categorySelect = document.querySelector('select[name="id_categoria"]');
+    const brandSelect = document.querySelector('select[name="id_marca"]');
+    const tallaSelect = document.querySelector('select[name="id_talla"]');
 
-    if (!categorySelect || !brandSelect) return;
 
     try {
-        const [catRes, brandRes] = await Promise.all([
+        const [catRes, brandRes, tallaRes] = await Promise.all([
             fetch('/api/categorias'),
-            fetch('/api/marcas')
+            fetch('/api/marcas'),
+            fetch('/api/tallas') // Añadimos la petición para obtener las tallas
         ]);
         const categories = await catRes.json();
         const brands = await brandRes.json();
+        const tallas = await tallaRes.json();
 
-        categories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`);
-        brands.forEach(brand => brandSelect.innerHTML += `<option value="${brand.id_marca}">${brand.nombre}</option>`);
+        if (categorySelect) {
+            categorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
+            categories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`);
+        }
+        if (brandSelect) {
+            brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
+            brands.forEach(brand => brandSelect.innerHTML += `<option value="${brand.id_marca}">${brand.nombre}</option>`);
+        }
+        if (tallaSelect) {
+            tallaSelect.innerHTML = '<option value="">Selecciona una talla</option>';
+            // Mostramos las tallas combinando el tipo y el valor (ej. "Calzado - 42")
+            tallas.forEach(talla => tallaSelect.innerHTML += `<option value="${talla.id_talla}">${talla.tipo} - ${talla.valor}</option>`);
+        }
 
     } catch (error) {
         console.error("Error al cargar selectores del formulario:", error);
@@ -105,8 +122,12 @@ function handleAddProductForm() {
         const formData = new FormData(form);
         const productData = Object.fromEntries(formData.entries());
 
-        // El precio se envía en centavos
-        productData.precio = Number(productData.precio);
+        // MEJORA: Asegurar que los campos numéricos se traten como números.
+        productData.precio = Number(productData.precio) || 0;
+        productData.stock = Number(productData.stock) || 0;
+        productData.id_categoria = Number(productData.id_categoria) || null;
+        productData.id_marca = Number(productData.id_marca) || null;
+        productData.id_talla = Number(productData.id_talla) || null;
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -141,19 +162,13 @@ async function initAdminPage() {
     const isAdmin = await checkAdminStatus();
 
     if (!isAdmin) {
-        // Si no es admin (incluyendo no logueado), ocultar/deshabilitar funcionalidades
-        const dashboardSection = document.getElementById('dashboard');
-        const addProductFormSection = document.getElementById('add-product-form-section');
-        const container = document.querySelector('.admin-main .container');
-
-        if (dashboardSection) dashboardSection.remove();
-        if (addProductFormSection) addProductFormSection.remove();
-
-        if (container) {
-            container.innerHTML = `
-                <div class="admin-access-message-wrapper">
-                    <h2 class="admin-section-title">Acceso Restringido</h2>
-                    <p>Para acceder al panel de administración, debes iniciar sesión con una cuenta de administrador.</p>
+        // Si no es admin, ocultar el panel y mostrar un mensaje de acceso denegado.
+        const adminPanel = document.getElementById('admin-panel');
+        if (adminPanel) {
+            adminPanel.innerHTML = `
+                <div class="admin-access-message-wrapper" style="text-align: center;">
+                    <h2>Acceso Restringido</h2>
+                    <p>Debes iniciar sesión con una cuenta de administrador para ver este contenido.</p>
                     <a href="/login.html?redirect=/admin.html" class="btn btn-primary">Iniciar Sesión</a>
                 </div>
             `;
@@ -161,8 +176,7 @@ async function initAdminPage() {
         return; // Detener la inicialización de funcionalidades de admin
     }
 
-    // Si es admin, cargar datos y formularios
-    loadDashboardData();
+    // Si es admin, cargar los selectores y el manejador del formulario
     populateFormSelects();
     handleAddProductForm();
 }

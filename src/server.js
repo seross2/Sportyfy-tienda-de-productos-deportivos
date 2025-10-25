@@ -6,17 +6,7 @@ import path from 'path';
 import nodemailer from 'nodemailer';
 import { fileURLToPath } from 'url';
 
-// --- 1. DIAGNÓSTICO DE VARIABLES DE ENTORNO ---
-console.log('--- Iniciando diagnóstico de .env ---');
-const result = dotenv.config(); // Carga el .env desde la raíz del proyecto
-
-if (result.error) {
-  console.error('ERROR: dotenv no pudo cargar el archivo .env. Causa:', result.error);
-  throw result.error;
-}
-
-console.log('Valor de SUPABASE_URL leído:', process.env.SUPABASE_URL);
-console.log('--- Fin del diagnóstico ---');
+dotenv.config(); // Carga el .env desde la raíz del proyecto
 
 const app = express();
 const PORT = 3000;
@@ -29,6 +19,7 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Configuración de Supabase (para el servidor)
+// Usamos la SERVICE_KEY aquí para tener permisos de administrador en el backend.
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // Configuración de Stripe
@@ -49,8 +40,18 @@ const authMiddleware = async (req, res, next) => {
 };
 
 const adminMiddleware = async (req, res, next) => {
-  const { data, error } = await supabase.from('profiles').select('rol').eq('id', req.user.id).single();
-  if (error || !data || data.rol !== 'admin') {
+  // CORRECCIÓN: El rol no está en los metadatos, debemos consultarlo en la tabla 'profiles'.
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', req.user.id)
+    .single();
+
+  if (error || !profile) {
+    return res.status(500).json({ error: 'No se pudo verificar el perfil del usuario.' });
+  }
+
+  if (profile.rol !== 'admin') {
     return res.status(403).json({ error: 'Access denied. Admin role required.' });
   }
   next();
@@ -168,7 +169,7 @@ app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
     const { nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla } = req.body;
     if (!nombre || !precio || !imagen_url || stock === undefined) {
       return res.status(400).json({ error: 'Nombre, precio, imagen y stock son requeridos.' });
-    }
+    } 
     const { data, error } = await supabase
       .from('productos')
       // Corregido para usar los nombres de columna correctos de la DB
@@ -240,7 +241,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
       .insert({ id_usuario, direccion_envio, telefono_contacto, notas, estado: 'Pendiente' })
-      .select()
+      .select('id_pedido')
       .single();
 
     if (pedidoError) throw pedidoError;
@@ -249,8 +250,8 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
     const detallesPedido = items.map(item => ({
       id_pedido: pedido.id_pedido,
       id_producto: item.id_producto,
-      cantidad: item.quantity,
-      precio_unitario: item.precio / 100 // Convertir de centavos a la unidad principal para la DB
+      cantidad: item.quantity, 
+      precio_unitario: item.precio // El precio ya está en la unidad correcta
     }));
 
     const { error: detalleError } = await supabase.from('pedido_detalle').insert(detallesPedido);
@@ -264,7 +265,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
           name: item.nombre,
           images: [item.imagen_url],
         },
-        unit_amount: item.precio,
+        unit_amount: item.precio * 100, // Stripe requiere el precio en centavos
       },
       quantity: item.quantity,
     }));

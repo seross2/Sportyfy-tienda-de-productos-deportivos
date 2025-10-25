@@ -4,12 +4,14 @@
  * @param {'success' | 'error'} type El tipo de notificación, para el color de fondo.
  */
 export function showToast(message, type = 'success') {
-    const toast = document.getElementById('message');
+    // CORRECCIÓN: El ID del elemento para el toast debe ser consistente.
+    const toast = document.getElementById('toast-message'); 
     if (!toast) return;
 
     toast.textContent = message;
-    toast.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
-    toast.style.display = 'block';
+    toast.className = `toast-message ${type}`; // Usar clases para el estilo es más limpio
+    toast.classList.add('show');
 
-    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    // Ocultar el toast después de 3 segundos
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
 }
