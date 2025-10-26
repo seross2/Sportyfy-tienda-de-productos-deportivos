@@ -182,6 +182,115 @@ app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+// Ruta para AÑADIR una nueva categoría (protegida)
+app.post('/api/categorias', authMiddleware, adminMiddleware, async (req, res) => {
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
+  try {
+    const { data, error } = await supabase.from('categorias').insert({ nombre }).select();
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al añadir la categoría', details: error.message });
+  }
+});
+
+// Ruta para AÑADIR una nueva marca (protegida)
+app.post('/api/marcas', authMiddleware, adminMiddleware, async (req, res) => {
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
+  try {
+    const { data, error } = await supabase.from('marcas').insert({ nombre }).select();
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al añadir la marca', details: error.message });
+  }
+});
+
+// Ruta para AÑADIR una nueva talla (protegida)
+app.post('/api/tallas', authMiddleware, adminMiddleware, async (req, res) => {
+  const { tipo, valor } = req.body;
+  if (!tipo || !valor) return res.status(400).json({ error: 'Tipo y valor son requeridos.' });
+  try {
+    const { data, error } = await supabase.from('tallas').insert({ tipo, valor }).select();
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al añadir la talla', details: error.message });
+  }
+});
+
+// Ruta para ACTUALIZAR un producto existente (protegida)
+app.put('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla } = req.body;
+    if (!nombre || !precio || !imagen_url || stock === undefined) {
+      return res.status(400).json({ error: 'Todos los campos principales son requeridos.' });
+    }
+    const { data, error } = await supabase
+      .from('productos')
+      .update({ nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla })
+      .eq('id_producto', id)
+      .select();
+
+    if (error) throw error;
+    if (data.length === 0) return res.status(404).json({ error: 'Producto no encontrado para actualizar.' });
+
+    res.status(200).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar el producto', details: error.message });
+  }
+});
+
+// Ruta para ELIMINAR un producto (protegida)
+app.delete('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from('productos').delete().eq('id_producto', id);
+    if (error) throw error;
+    res.status(204).send(); // 204 No Content: éxito sin devolver datos
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el producto', details: error.message });
+  }
+});
+
+// Ruta para ELIMINAR una categoría (protegida)
+app.delete('/api/categorias/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from('categorias').delete().eq('id_categoria', id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la categoría', details: error.message });
+  }
+});
+
+// Ruta para ELIMINAR una marca (protegida)
+app.delete('/api/marcas/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from('marcas').delete().eq('id_marca', id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la marca', details: error.message });
+  }
+});
+
+// Ruta para ELIMINAR una talla (protegida)
+app.delete('/api/tallas/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from('tallas').delete().eq('id_talla', id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la talla', details: error.message });
+  }
+});
 // --- RUTAS PARA RESEÑAS ---
 
 // Obtener reseñas de un producto específico

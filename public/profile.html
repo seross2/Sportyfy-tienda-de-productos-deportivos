@@ -13,10 +13,14 @@
         <div class="container">
             <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
-                <ul>
+                <!-- Menú para usuarios normales y visitantes -->
+                <ul id="store-nav">
                     <li><a href="/">Productos</a></li>
                     <li><a href="/cart.html">Carrito</a></li>
                     <li><a href="/contact.html">Contacto</a></li>
+                </ul>
+                <!-- Menú para autenticación y perfil -->
+                <ul id="user-nav">
                     <li id="nav-login" style="display: none;"><a href="/login.html">Login</a></li>
                     <li id="nav-register" style="display: none;"><a href="/register.html">Registro</a></li>
                     <li id="nav-user" class="dropdown" style="display: none;">

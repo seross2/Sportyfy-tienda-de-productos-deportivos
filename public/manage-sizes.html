@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sportify Store</title>
+    <title>Gestionar Tallas - Admin</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 
@@ -32,39 +32,26 @@
                 <h3>Menú de Admin</h3>
                 <nav class="admin-nav">
                     <ul>
-                        <li><a href="/admin.html" class="active">Productos</a></li>
+                        <li><a href="/admin.html">Productos</a></li>
                         <li><a href="/manage-categories.html">Categorías</a></li>
                         <li><a href="/manage-brands.html">Marcas</a></li>
-                        <li><a href="/manage-sizes.html">Tallas</a></li>
+                        <li><a href="/manage-sizes.html" class="active">Tallas</a></li>
                     </ul>
                 </nav>
             </aside>
-            <section id="admin-dashboard" class="admin-content">
+            <section class="admin-content">
                 <div class="dashboard-header">
-                    <h2>Gestión de Productos</h2>
-                    <a href="/add-product.html" class="btn btn-primary">Añadir Nuevo Producto</a>
+                    <h2>Gestionar Tallas</h2>
+                    <a href="/add-size.html" class="btn btn-primary">Añadir Nueva Talla</a>
                 </div>
-                <div id="products-table-container"></div>
+                <div id="sizes-list-container"></div>
             </section>
         </div>
     </main>
 
     <div id="toast-message"></div>
-
     <script type="module" src="/js/auth.js"></script>
-    <script type="module" src="/js/admin-dashboard.js"></script>
-</body>
-
-</html>
-</div>
-<div id="products-table-container"></div>
-</section>
-</main>
-
-<div id="toast-message"></div>
-
-<script type="module" src="/js/auth.js"></script>
-<script type="module" src="/js/admin-dashboard.js"></script>
+    <script type="module" src="/js/manage-sizes.js"></script>
 </body>
 
 </html>

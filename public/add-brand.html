@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sportify Store</title>
+    <title>Añadir Marca - Admin</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 
@@ -32,39 +32,27 @@
                 <h3>Menú de Admin</h3>
                 <nav class="admin-nav">
                     <ul>
-                        <li><a href="/admin.html" class="active">Productos</a></li>
+                        <li><a href="/admin.html">Productos</a></li>
                         <li><a href="/manage-categories.html">Categorías</a></li>
-                        <li><a href="/manage-brands.html">Marcas</a></li>
+                        <li><a href="/manage-brands.html" class="active">Marcas</a></li>
                         <li><a href="/manage-sizes.html">Tallas</a></li>
                     </ul>
                 </nav>
             </aside>
-            <section id="admin-dashboard" class="admin-content">
-                <div class="dashboard-header">
-                    <h2>Gestión de Productos</h2>
-                    <a href="/add-product.html" class="btn btn-primary">Añadir Nuevo Producto</a>
-                </div>
-                <div id="products-table-container"></div>
+            <section class="admin-content">
+                <h2>Añadir Nueva Marca</h2>
+                <a href="/manage-brands.html">← Volver a la lista</a>
+                <form id="add-brand-form" class="management-form" style="margin-top: 1rem;">
+                    <input type="text" name="nombre" placeholder="Nombre de la marca" required>
+                    <button type="submit" class="btn btn-primary">Guardar Marca</button>
+                </form>
             </section>
         </div>
     </main>
 
     <div id="toast-message"></div>
-
     <script type="module" src="/js/auth.js"></script>
-    <script type="module" src="/js/admin-dashboard.js"></script>
-</body>
-
-</html>
-</div>
-<div id="products-table-container"></div>
-</section>
-</main>
-
-<div id="toast-message"></div>
-
-<script type="module" src="/js/auth.js"></script>
-<script type="module" src="/js/admin-dashboard.js"></script>
+    <script type="module" src="/js/add-brand.js"></script>
 </body>
 
 </html>

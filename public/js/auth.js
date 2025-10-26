@@ -5,9 +5,7 @@ import { showToast } from './utils.js';
 // --- INICIALIZACIÓN SEGURA DE SUPABASE ---
 let supabase;
 
-// ---------------------------------------------
-// --- 1. MANEJADOR DE INICIO DE SESIÓN (LOGIN) ---
-// --------------------------------------------- 
+// --- 1. MANEJADOR DE INICIO DE SESIÓN (LOGIN) 
 function handleLoginForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -29,11 +27,22 @@ function handleLoginForm(form) {
             submitButton.disabled = false;
             submitButton.textContent = 'Iniciar Sesión';
         } else {
-            showToast('¡Inicio de sesión exitoso!', 'success'); 
-            // CORRECCIÓN: Consultar el rol desde la tabla 'profiles'
-            const { data: { user } } = await supabase.auth.getUser(); 
-            let userRole = 'user'; // Rol por defecto
+            // Obtenemos el usuario una sola vez
+            const { data: { user } } = await supabase.auth.getUser();
 
+            // --- MEJORA DE SEGURIDAD: VERIFICAR SI EL CORREO ESTÁ CONFIRMADO ---
+            if (user && !user.email_confirmed_at) {
+                showToast('Tu cuenta no ha sido verificada. Revisa tu correo.', 'error');
+                await supabase.auth.signOut(); // Cerramos la sesión para forzar la verificación
+                submitButton.disabled = false;
+                submitButton.textContent = 'Iniciar Sesión';
+                return; // Detenemos la ejecución aquí
+            }
+
+            showToast('¡Inicio de sesión exitoso!', 'success'); 
+
+            // Consultar el rol desde la tabla 'profiles'
+            let userRole = 'user'; // Rol por defecto
             if (user) {
                 const { data: profile, error: profileError } = await supabase
                     .from('profiles')
@@ -85,46 +94,28 @@ function handleRegisterForm(form) {
         if (!supabase) return showToast('Error de configuración de Supabase.');
 
         const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: email,
-            password: password,
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: userData.full_name,
+                    username: userData.username,
+                    phone: userData.phone
+                }
+            }
         });
 
         if (authError) {
             if (authError.message.includes('User already registered')) {
                  showToast('Ya existe una cuenta con este correo. Intenta iniciar sesión.', 'error');
-            } else if (authError.message.toLowerCase().includes('password should be stronger')) {
-                showToast('La contraseña es muy débil. Intenta combinar letras, números y símbolos.', 'error');
             } else {
-                 showToast('Usuario o contraseña incorrectos.', 'error');
-            }
-        } else if (authData.user) {
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({ 
-                    full_name: userData.full_name,
-                    username: userData.username,
-                    correo: email, 
-                    phone: userData.phone 
-                })
-                .eq('id', authData.user.id);
-
-            if (profileError) {
-                console.error(
-                    "ADVERTENCIA: El usuario se creó, pero no se pudo actualizar el perfil. Causa probable: trigger 'handle_new_user' falló o RLS lo impidió.", 
-                    profileError
-                );
-                if (profileError.message.includes('duplicate key value violates unique constraint "profiles_username_key"')) {
-                    showToast('Ese nombre de usuario ya está en uso. Elige otro.', 'error');
-                } else {
-                    showToast('Registro casi completo. Por favor, contacta a soporte.', 'warning');
-                }
-            } else {
-                showToast('¡Cuenta creada! Revisa tu correo para verificarla.', 'success');
-                form.reset();
+                 showToast(`Error en el registro: ${authError.message}`, 'error');
             }
         } else {
-             showToast('Registro iniciado. Revisa tu correo para confirmar.', 'success');
-             form.reset();
+             // En lugar de un toast, redirigimos a una página de instrucciones.
+             // Esto es más claro para el usuario.
+             showToast('¡Registro exitoso!', 'success');
+             setTimeout(() => window.location.href = '/check-email.html', 1000);
         }
 
         submitButton.disabled = false;
@@ -205,6 +196,7 @@ async function updateUI(session) {
     const navUserLink = document.getElementById('nav-user-link');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
+    const storeNav = document.getElementById('store-nav'); // Menú de la tienda
 
     if (session) {
         // Usuario logueado
@@ -227,14 +219,24 @@ async function updateUI(session) {
                 .single();
             if (profile) userRole = profile.rol;
         }
+
         if (navAdmin && userRole === 'admin') {
+            // --- LÓGICA PARA VISTA DE ADMINISTRADOR ---
+            // Ocultar navegación de la tienda
+            if (storeNav) storeNav.style.display = 'none';
+            // Mostrar solo el enlace al panel de admin
             navAdmin.style.display = 'block';
+        } else {
+            // --- LÓGICA PARA VISTA DE USUARIO NORMAL ---
+            if (storeNav) storeNav.style.display = 'flex'; // Asegurarse de que se vea
+            if (navAdmin) navAdmin.style.display = 'none';
         }
 
         if (navLogout) navLogout.style.display = 'block';
 
     } else {
         // Usuario no logueado
+        if (storeNav) storeNav.style.display = 'flex';
         if (navLogin) navLogin.style.display = 'block';
         if (navRegister) navRegister.style.display = 'block';
         if (navUser) navUser.style.display = 'none';
