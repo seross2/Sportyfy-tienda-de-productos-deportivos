@@ -10,10 +10,59 @@ dotenv.config(); // Carga el .env desde la raíz del proyecto
 
 const app = express();
 const PORT = 3000;
+
+// Configuración de Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Endpoint para el Webhook de Stripe
+// ¡IMPORTANTE! Esta ruta debe definirse ANTES de app.use(express.json())
+// porque Stripe necesita el cuerpo de la solicitud en formato raw (sin procesar).
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    console.log(`❌ Error message: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Manejar el evento checkout.session.completed
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const id_pedido = session.metadata.id_pedido;
+
+    try {
+      // Actualizar el estado del pedido a 'Pagado'
+      await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id_pedido', id_pedido);
+
+      // Registrar el pago en la tabla de pagos
+      await supabase.from('pagos').insert({
+        id_pedido: id_pedido,
+        monto: session.amount_total, // Stripe devuelve el monto en centavos
+        metodo: 'Stripe',
+        stripe_payment_id: session.payment_intent,
+        estado_pago: 'Completado'
+      });
+
+      // ¡Llamar a la función para reducir el stock!
+      await supabase.rpc('reducir_stock_pedido', { p_id_pedido: id_pedido });
+
+    } catch (error) {
+      console.error('Error al actualizar el pedido o registrar el pago:', error);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// Ahora, usamos el middleware de JSON para el resto de las rutas.
 app.use(express.json());
 
 // Servir archivos estáticos (HTML, CSS, JS del cliente)
-// Apuntar a la carpeta 'public'. Como server.js está en 'src', debemos subir un nivel ('..').
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -21,9 +70,6 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // Configuración de Supabase (para el servidor)
 // Usamos la SERVICE_KEY aquí para tener permisos de administrador en el backend.
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-// Configuración de Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // --- MIDDLEWARE DE AUTENTICACIÓN ---
 const authMiddleware = async (req, res, next) => {
@@ -40,7 +86,6 @@ const authMiddleware = async (req, res, next) => {
 };
 
 const adminMiddleware = async (req, res, next) => {
-  // CORRECCIÓN: El rol no está en los metadatos, debemos consultarlo en la tabla 'profiles'.
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('rol')
@@ -172,7 +217,6 @@ app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
     } 
     const { data, error } = await supabase
       .from('productos')
-      // Corregido para usar los nombres de columna correctos de la DB
       .insert([{ nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla }])
       .select();
     if (error) throw error;
@@ -374,7 +418,7 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
           name: item.nombre,
           images: [item.imagen_url],
         },
-        unit_amount: item.precio * 100, // Stripe requiere el precio en centavos
+        unit_amount: item.precio,
       },
       quantity: item.quantity,
     }));
@@ -394,55 +438,10 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
     // 4. Devolver la URL de la sesión de Stripe al frontend
     res.json({ url: session.url });
   } catch (error) {
-    // --- MEJORA DE DIAGNÓSTICO ---
-    // Imprime el error completo en la consola del servidor para un análisis detallado.
     console.error('--- ERROR DETALLADO AL CREAR PEDIDO ---');
     console.error(error);
     res.status(500).json({ error: 'Error al crear el pedido', details: error.message || 'Error desconocido en el servidor.' });
   }
-});
-
-// Endpoint para el Webhook de Stripe
-app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err) {
-    console.log(`❌ Error message: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Manejar el evento checkout.session.completed
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const id_pedido = session.metadata.id_pedido;
-
-    try {
-      // Actualizar el estado del pedido a 'Pagado'
-      await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id_pedido', id_pedido);
-
-      // Registrar el pago en la tabla de pagos
-      await supabase.from('pagos').insert({
-        id_pedido: id_pedido,
-        monto: session.amount_total, // Stripe devuelve el monto en centavos
-        metodo: 'Stripe',
-        stripe_payment_id: session.payment_intent,
-        estado_pago: 'Completado'
-      });
-
-      // ¡Llamar a la función para reducir el stock!
-      await supabase.rpc('reducir_stock_pedido', { p_id_pedido: id_pedido });
-
-    } catch (error) {
-      console.error('Error al actualizar el pedido o registrar el pago:', error);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-  }
-
-  res.json({ received: true });
 });
 
 // Ruta para obtener el historial de pedidos de un usuario (protegida)

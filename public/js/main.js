@@ -127,33 +127,60 @@ function initializeFilters() {
     });
 }
 
-function init() {
-    initializeFilters();
-    fetchAndDisplayProducts();
-    document.getElementById('price-filter').dispatchEvent(new Event('input')); // Actualizar el precio al cargar
+function initMobileNav() {
+    const navToggle = document.querySelector('.nav-toggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+            navToggle.classList.toggle('active');
+            navLinks.classList.toggle('active');
+        });
+    }
 }
 
-// Usar delegación de eventos para manejar los clics en los botones "Añadir al Carrito"
-productContainer.addEventListener('click', (event) => {
-    if (event.target.matches('.add-to-cart-btn')) {
-        const productId = event.target.dataset.productId;
-        // Encontrar el producto completo desde nuestra lista guardada
-        const productToAdd = allProducts.find(p => p.id_producto == productId);
-
-        if (productToAdd) {
-            // CORRECCIÓN: Crear un objeto plano para el carrito para evitar problemas de estructura.
-            // Esto asegura que no guardamos datos anidados (como product.marcas) en el localStorage.
-            const productForCart = {
-                id_producto: productToAdd.id_producto,
-                nombre: productToAdd.nombre,
-                precio: productToAdd.precio,
-                imagen_url: productToAdd.imagen_url,
-            };
-
-            addProductToCart(productForCart);
-            showToast(`'${productToAdd.nombre}' añadido al carrito.`, 'success');
-        }
+/**
+ * Función principal que se ejecuta cuando el DOM está listo.
+ */
+function main() {
+    // Inicializa los filtros y la carga de productos si estamos en la página principal
+    if (document.getElementById('product-list')) {
+        initProductPage();
+        initMobileNav(); // Inicializa la navegación móvil
     }
-});
+}
 
-document.addEventListener('DOMContentLoaded', init);
+/**
+ * Inicializa los filtros y la carga de productos.
+ */
+function initProductPage() {
+    initializeFilters();
+    fetchAndDisplayProducts();
+    const priceFilterInput = document.getElementById('price-filter');
+    if (priceFilterInput) {
+        priceFilterInput.dispatchEvent(new Event('input')); // Actualizar el precio al cargar
+    }
+
+    // Usar delegación de eventos para manejar los clics en los botones "Añadir al Carrito"
+    if (productContainer) {
+        productContainer.addEventListener('click', (event) => {
+            if (event.target.matches('.add-to-cart-btn')) {
+                const productId = event.target.dataset.productId;
+                const productToAdd = allProducts.find(p => p.id_producto == productId);
+
+                if (productToAdd) {
+                    const productForCart = {
+                        id_producto: productToAdd.id_producto,
+                        nombre: productToAdd.nombre,
+                        precio: productToAdd.precio,
+                        imagen_url: productToAdd.imagen_url,
+                    };
+                    addProductToCart(productForCart);
+                    showToast(`'${productToAdd.nombre}' añadido al carrito.`, 'success');
+                }
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', main);

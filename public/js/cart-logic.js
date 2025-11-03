@@ -29,8 +29,6 @@ export function addProductToCart(product) {
     if (existingProductIndex !== -1) {
         cart[existingProductIndex].quantity += 1;
     } else {
-        // MEJORA: Guardar solo los datos esenciales en el carrito.
-        // Esto mantiene el localStorage más pequeño y evita guardar datos innecesarios.
         const cartItem = {
             id_producto: product.id_producto,
             nombre: product.nombre,

@@ -14,28 +14,49 @@
         <div class="container">
             <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
-                <!-- Menú para usuarios normales y visitantes -->
-                <ul id="store-nav">
-                    <li><a href="/">Productos</a></li>
-                    <li><a href="/cart.html">Carrito</a></li>
-                    <li><a href="/contact.html">Contacto</a></li>
-                </ul>
-                <!-- Menú para autenticación y perfil -->
-                <ul id="user-nav">
+                <!-- Botón de hamburguesa para móvil -->
+                <button class="nav-toggle" aria-label="Abrir menú">
+                    <span class="hamburger"></span>
+                </button>
+                <!-- CORRECCIÓN: Unificamos todo en una sola lista 'nav-links' -->
+                <ul class="nav-links">
+                    <!-- Enlaces de la tienda (se ocultarán para admin) -->
+                    <li class="store-link"><a href="/">Productos</a></li>
+                    <li class="store-link">
+                        <a href="/cart.html"><img src="/icons/icono carrito.png" alt="Carrito" class="nav-icon"></a>
+                    </li>
+                    <li class="store-link"><a href="/contact.html">Contacto</a></li>
+
+                    <!-- Enlaces de autenticación y perfil -->
                     <li id="nav-login" style="display: none;"><a href="/login.html">Login</a></li>
                     <li id="nav-register" style="display: none;"><a href="/register.html">Registro</a></li>
-                    <li id="nav-user" class="dropdown" style="display: none;">
-                        <a href="#" id="nav-user-link">Usuario</a>
-                        <ul class="dropdown-menu">
-                            <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
-                            <li><a href="/profile.html">Mi Perfil</a></li>
-                            <li id="nav-logout"><a href="#" id="logout-button">Cerrar Sesión</a></li>
-                        </ul>
+                    <li id="nav-user" style="display: none;">
+                        <a href="/profile.html" id="nav-user-link">Usuario</a>
                     </li>
+                    <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
+                    <li id="nav-logout" style="display: none;"><a href="#" id="logout-button">Cerrar Sesión</a></li>
                 </ul>
             </nav>
         </div>
     </header>
+
+    <!-- =================================
+       Sección Hero (Nuevo)
+       ================================= -->
+    <section class="hero-carousel">
+        <div class="carousel-slides">
+            <!-- Las diapositivas se añadirán aquí desde JS -->
+        </div>
+        <div class="hero-content">
+            <h1 class="hero-title">La Victoria Comienza Aquí</h1>
+            <p class="hero-subtitle">Encuentra el equipamiento deportivo que te llevará al siguiente nivel.</p>
+            <a href="#products" class="btn btn-primary btn-lg">Explorar Productos</a>
+        </div>
+        <!-- Controles de Navegación -->
+        <button class="carousel-control prev" aria-label="Anterior">&#10094;</button>
+        <button class="carousel-control next" aria-label="Siguiente">&#10095;</button>
+        <div class="carousel-dots"></div>
+    </section>
 
     <main>
         <div class="container">
@@ -65,6 +86,36 @@
         </div>
     </main>
 
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section about">
+                    <h2 class="logo-text"><span>Sportify</span> Store</h2>
+                    <p>
+                        Tu tienda de confianza para equipamiento deportivo de alta calidad.
+                        Lleva tu rendimiento al siguiente nivel.
+                    </p>
+                </div>
+                <div class="footer-section links">
+                    <h2>Enlaces Rápidos</h2>
+                    <ul>
+                        <li><a href="/">Inicio</a></li>
+                        <li><a href="/#products">Productos</a></li>
+                        <li><a href="/contact.html">Contacto</a></li>
+                        <li><a href="/profile.html">Mi Cuenta</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section social">
+                    <h2>Síguenos</h2>
+                    <p>Próximamente en redes sociales.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2024 Sportify Store | Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
     <!-- Contenedor de notificaciones global -->
     <div id="toast-message"></div>
 
@@ -74,6 +125,7 @@
     <script type="module" src="/js/cart-logic.js"></script>
     <script type="module" src="/js/auth.js"></script>
     <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/carousel.js"></script>
 </body>
 
 </html>

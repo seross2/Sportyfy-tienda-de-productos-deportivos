@@ -23,7 +23,6 @@ async function checkAdminStatus() {
         return false;
     }
 
-    // CORRECCIÓN: Consultar el rol desde la tabla 'profiles' en lugar de los metadatos.
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('rol')
@@ -122,7 +121,6 @@ function handleAddProductForm() {
         const formData = new FormData(form);
         const productData = Object.fromEntries(formData.entries());
 
-        // MEJORA: Asegurar que los campos numéricos se traten como números.
         productData.precio = Number(productData.precio) || 0;
         productData.stock = Number(productData.stock) || 0;
         productData.id_categoria = Number(productData.id_categoria) || null;

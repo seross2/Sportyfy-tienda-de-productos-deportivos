@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Pago Exitoso! - Sportify</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 60vh;
+            padding: 2rem;
+        }
+
+        .status-container h1 {
+            color: var(--success-color);
+            margin-bottom: 1rem;
+        }
+
+        .status-container p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="status-container">
+            <h1>¡Gracias por tu compra!</h1>
+            <p>Tu pago ha sido procesado exitosamente. Hemos recibido tu pedido y pronto comenzaremos a prepararlo.</p>
+            <a href="/" class="btn btn-primary">Volver a la tienda</a>
+        </div>
+    </div>
+
+    <script>
+        // Al llegar a la página de éxito, el pago se ha completado.
+        // Este es el momento correcto para limpiar el carrito.
+        localStorage.removeItem('sportifyCart');
+    </script>
+</body>
+
+</html>

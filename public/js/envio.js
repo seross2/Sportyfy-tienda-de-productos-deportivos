@@ -7,7 +7,12 @@ const summaryCartTotal = document.getElementById('summary-cart-total');
 const continueToPaymentBtn = document.getElementById('continue-to-payment-btn');
 
 function formatPrice(amount) {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(amount);
+    // CORRECCIÓN: El precio viene en centavos, hay que dividirlo por 100 para mostrarlo en pesos.
+    return new Intl.NumberFormat('es-CO', { 
+        style: 'currency', 
+        currency: 'COP',
+        minimumFractionDigits: 0 
+    }).format(amount / 100);
 }
 
 function renderOrderSummary() {
@@ -23,11 +28,12 @@ function renderOrderSummary() {
 
     let total = 0;
     summaryCartItems.innerHTML = cart.map(item => {
-        total += (item.precio / 100) * item.quantity;
+        const itemTotal = item.precio * item.quantity;
+        total += itemTotal;
         return `
             <div class="summary-item">
                 <span>${item.nombre} (x${item.quantity})</span>
-                <span>${formatPrice((item.precio / 100) * item.quantity)}</span>
+                <span>${formatPrice(itemTotal)}</span>
             </div>
         `;
     }).join('');
@@ -83,9 +89,6 @@ async function handleFormSubmit(event) {
         if (error) {
             throw new Error(error);
         }
-
-        // Limpiar el carrito de localStorage después de crear el pedido exitosamente
-        localStorage.removeItem('sportifyCart');
 
         // Redirigir al usuario a la página de pago de Stripe
         window.location.href = url;

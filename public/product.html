@@ -15,7 +15,9 @@
             <nav>
                 <ul>
                     <li><a href="/">Volver a la tienda</a></li>
-                    <li><a href="/cart.html">Carrito</a></li>
+                    <li>
+                        <a href="/cart.html"><img src="/icons/icono carrito.png" alt="Carrito" class="nav-icon"></a>
+                    </li>
                     <li id="login-link"><a href="/login.html">Login</a></li>
                 </ul>
             </nav>
@@ -39,20 +41,26 @@
 
                 <div class="review-form-container">
                     <button id="toggle-review-form-btn" class="btn btn-secondary">Escribir una reseña</button>
-                    
+
                     <!-- Formulario para añadir una nueva reseña (oculto por defecto) -->
                     <form id="review-form" style="display: none;">
                         <h3>Deja tu reseña</h3>
                         <fieldset id="review-fieldset">
                             <p>Solo los usuarios que han comprado este producto pueden dejar una reseña.</p>
                             <div class="star-rating">
-                                <input type="radio" id="star5" name="puntuacion" value="5" required /><label for="star5">&#9733;</label>
-                                <input type="radio" id="star4" name="puntuacion" value="4" /><label for="star4">&#9733;</label>
-                                <input type="radio" id="star3" name="puntuacion" value="3" /><label for="star3">&#9733;</label>
-                                <input type="radio" id="star2" name="puntuacion" value="2" /><label for="star2">&#9733;</label>
-                                <input type="radio" id="star1" name="puntuacion" value="1" /><label for="star1">&#9733;</label>
+                                <input type="radio" id="star5" name="puntuacion" value="5" required /><label
+                                    for="star5">&#9733;</label>
+                                <input type="radio" id="star4" name="puntuacion" value="4" /><label
+                                    for="star4">&#9733;</label>
+                                <input type="radio" id="star3" name="puntuacion" value="3" /><label
+                                    for="star3">&#9733;</label>
+                                <input type="radio" id="star2" name="puntuacion" value="2" /><label
+                                    for="star2">&#9733;</label>
+                                <input type="radio" id="star1" name="puntuacion" value="1" /><label
+                                    for="star1">&#9733;</label>
                             </div>
-                            <textarea name="comentario" placeholder="Escribe tu comentario aquí..." rows="4" required></textarea>
+                            <textarea name="comentario" placeholder="Escribe tu comentario aquí..." rows="4"
+                                required></textarea>
                             <button type="submit" class="btn btn-primary">Enviar Reseña</button>
                         </fieldset>
                     </form>
@@ -60,6 +68,36 @@
             </div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section about">
+                    <h2 class="logo-text"><span>Sportify</span> Store</h2>
+                    <p>
+                        Tu tienda de confianza para equipamiento deportivo de alta calidad.
+                        Lleva tu rendimiento al siguiente nivel.
+                    </p>
+                </div>
+                <div class="footer-section links">
+                    <h2>Enlaces Rápidos</h2>
+                    <ul>
+                        <li><a href="/">Inicio</a></li>
+                        <li><a href="/#products">Productos</a></li>
+                        <li><a href="/contact.html">Contacto</a></li>
+                        <li><a href="/profile.html">Mi Cuenta</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section social">
+                    <h2>Síguenos</h2>
+                    <p>Próximamente en redes sociales.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2024 Sportify Store | Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
 
     <div id="toast-message"></div>
 

@@ -30,7 +30,6 @@ function handleLoginForm(form) {
             // Obtenemos el usuario una sola vez
             const { data: { user } } = await supabase.auth.getUser();
 
-            // --- MEJORA DE SEGURIDAD: VERIFICAR SI EL CORREO ESTÁ CONFIRMADO ---
             if (user && !user.email_confirmed_at) {
                 showToast('Tu cuenta no ha sido verificada. Revisa tu correo.', 'error');
                 await supabase.auth.signOut(); // Cerramos la sesión para forzar la verificación
@@ -109,7 +108,7 @@ function handleRegisterForm(form) {
             if (authError.message.includes('User already registered')) {
                  showToast('Ya existe una cuenta con este correo. Intenta iniciar sesión.', 'error');
             } else {
-                 showToast(`Error en el registro: ${authError.message}`, 'error');
+                 showToast(`Error en el registro: ${authError.message}`, 'error'); // This line has a subtle change
             }
         } else {
              // En lugar de un toast, redirigimos a una página de instrucciones.
@@ -196,8 +195,7 @@ async function updateUI(session) {
     const navUserLink = document.getElementById('nav-user-link');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
-    const storeNav = document.getElementById('store-nav'); // Menú de la tienda
-
+    const storeLinks = document.querySelectorAll('.store-link'); // This line has a subtle change
     if (session) {
         // Usuario logueado
         if (navLogin) navLogin.style.display = 'none';
@@ -209,7 +207,6 @@ async function updateUI(session) {
             navUser.style.display = 'block';
         }
 
-        // CORRECCIÓN: Consultar el rol desde la tabla 'profiles' para mostrar el panel de admin
         let userRole = 'user'; // Rol por defecto
         if (session.user) {
             const { data: profile, error: profileError } = await supabase
@@ -222,13 +219,13 @@ async function updateUI(session) {
 
         if (navAdmin && userRole === 'admin') {
             // --- LÓGICA PARA VISTA DE ADMINISTRADOR ---
-            // Ocultar navegación de la tienda
-            if (storeNav) storeNav.style.display = 'none';
+            // Ocultar enlaces de la tienda
+            storeLinks.forEach(link => link.style.display = 'none');
             // Mostrar solo el enlace al panel de admin
             navAdmin.style.display = 'block';
         } else {
             // --- LÓGICA PARA VISTA DE USUARIO NORMAL ---
-            if (storeNav) storeNav.style.display = 'flex'; // Asegurarse de que se vea
+            storeLinks.forEach(link => link.style.display = 'block'); // Asegurarse de que se vean
             if (navAdmin) navAdmin.style.display = 'none';
         }
 
@@ -236,7 +233,7 @@ async function updateUI(session) {
 
     } else {
         // Usuario no logueado
-        if (storeNav) storeNav.style.display = 'flex';
+        storeLinks.forEach(link => link.style.display = 'block');
         if (navLogin) navLogin.style.display = 'block';
         if (navRegister) navRegister.style.display = 'block';
         if (navUser) navUser.style.display = 'none';
@@ -265,8 +262,6 @@ async function main() {
             'reset-password-form': handleResetPasswordForm,
         };
 
-        // CORRECCIÓN: Llamar a updateUI() inmediatamente al cargar la página
-        // para reflejar el estado de sesión actual sin esperar un evento.
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         updateUI(initialSession);
 
@@ -286,7 +281,6 @@ async function main() {
             updateUI(session);
         });
 
-        // CORRECCIÓN CRÍTICA: Ligar correctamente los manejadores a los formularios usando su ID.
         for (const formId in formHandlers) {
             const form = document.getElementById(formId);
             if (form) {
