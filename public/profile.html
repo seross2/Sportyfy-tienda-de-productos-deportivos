@@ -13,44 +13,41 @@
         <div class="container">
             <h1><a href="/" class="logo">Sportify Store</a></h1>
             <nav>
-                <!-- Menú para usuarios normales y visitantes -->
-                <ul id="store-nav">
-                    <li><a href="/">Productos</a></li>
-                    <li><a href="/cart.html">Carrito</a></li>
-                    <li><a href="/contact.html">Contacto</a></li>
-                </ul>
-                <!-- Menú para autenticación y perfil -->
-                <ul id="user-nav">
+                <button class="nav-toggle" aria-label="Abrir menú">
+                    <span class="hamburger"></span>
+                </button>
+                <ul class="nav-links">
+                    <li class="store-link"><a href="/">Productos</a></li>
+                    <li class="store-link">
+                        <a href="/cart.html"><img src="/icons/icono carrito.png" alt="Carrito" class="nav-icon"></a>
+                    </li>
+                    <li class="store-link"><a href="/contact.html">Contacto</a></li>
                     <li id="nav-login" style="display: none;"><a href="/login.html">Login</a></li>
                     <li id="nav-register" style="display: none;"><a href="/register.html">Registro</a></li>
-                    <li id="nav-user" class="dropdown" style="display: none;">
-                        <a href="#" id="nav-user-link">Usuario</a>
-                        <ul class="dropdown-menu">
-                            <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
-                            <li id="nav-logout"><a href="#" id="logout-button">Cerrar Sesión</a></li>
-                        </ul>
+                    <li id="nav-user" style="display: none;">
+                        <a href="/profile.html" id="nav-user-link">Usuario</a>
                     </li>
+                    <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
+                    <li id="nav-logout" style="display: none;"><a href="#" id="logout-button">Cerrar Sesión</a></li>
                 </ul>
             </nav>
         </div>
     </header>
-
     <main>
         <div class="container">
-            <h2>Mi Perfil</h2>
-            <div id="profile-details">
+            <h2>Mi Cuenta</h2>
+            <div id="profile-page-container">
+                <!-- El contenido se generará con JavaScript -->
                 <p>Cargando perfil...</p>
-            </div>
-
-            <h3>Historial de Pedidos</h3>
-            <div id="order-history">
-                <p>Cargando historial de pedidos...</p>
             </div>
         </div>
     </main>
-
+    <footer class="site-footer">
+        <!-- ... tu footer aquí ... -->
+    </footer>
     <div id="toast-message"></div>
-
+    <script type="module" src="/js/utils.js"></script>
+    <script type="module" src="/js/supabaseClient.js"></script>
     <script type="module" src="/js/auth.js"></script>
     <script type="module" src="/js/profile.js"></script>
 </body>

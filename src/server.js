@@ -288,6 +288,48 @@ app.put('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) =
   }
 });
 
+// Ruta para ACTUALIZAR una categoría (protegida)
+app.put('/api/categorias/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
+  try {
+    const { data, error } = await supabase.from('categorias').update({ nombre }).eq('id_categoria', id).select();
+    if (error) throw error;
+    res.status(200).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar la categoría', details: error.message });
+  }
+});
+
+// Ruta para ACTUALIZAR una marca (protegida)
+app.put('/api/marcas/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
+  try {
+    const { data, error } = await supabase.from('marcas').update({ nombre }).eq('id_marca', id).select();
+    if (error) throw error;
+    res.status(200).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar la marca', details: error.message });
+  }
+});
+
+// Ruta para ACTUALIZAR una talla (protegida)
+app.put('/api/tallas/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { tipo, valor } = req.body;
+  if (!tipo || !valor) return res.status(400).json({ error: 'Tipo y valor son requeridos.' });
+  try {
+    const { data, error } = await supabase.from('tallas').update({ tipo, valor }).eq('id_talla', id).select();
+    if (error) throw error;
+    res.status(200).json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar la talla', details: error.message });
+  }
+});
+
 // Ruta para ELIMINAR un producto (protegida)
 app.delete('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { id } = req.params;

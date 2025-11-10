@@ -2,10 +2,12 @@ import { getSupabaseClient } from './supabaseClient.js';
 import { syncCartOnLogin } from './cart-logic.js';
 import { showToast } from './utils.js';
 
-// --- INICIALIZACIÓN SEGURA DE SUPABASE ---
 let supabase;
 
-// --- 1. MANEJADOR DE INICIO DE SESIÓN (LOGIN) 
+/**
+ * Maneja el envío del formulario de inicio de sesión.
+ * @param {HTMLFormElement} form - El formulario de login.
+ */
 function handleLoginForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -17,56 +19,45 @@ function handleLoginForm(form) {
         const email = formData.get('email');
         const password = formData.get('password');
 
-        if (!supabase) return showToast('Error de configuración de Supabase.');
-
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
             showToast('Error al iniciar sesión. Revisa tu correo y contraseña.', 'error');
-            console.error('Error en signInWithPassword:', error.message);
             submitButton.disabled = false;
             submitButton.textContent = 'Iniciar Sesión';
-        } else {
-            // Obtenemos el usuario una sola vez
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (user && !user.email_confirmed_at) {
-                showToast('Tu cuenta no ha sido verificada. Revisa tu correo.', 'error');
-                await supabase.auth.signOut(); // Cerramos la sesión para forzar la verificación
-                submitButton.disabled = false;
-                submitButton.textContent = 'Iniciar Sesión';
-                return; // Detenemos la ejecución aquí
-            }
-
-            showToast('¡Inicio de sesión exitoso!', 'success'); 
-
-            // Consultar el rol desde la tabla 'profiles'
-            let userRole = 'user'; // Rol por defecto
-            if (user) {
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('rol')
-                    .eq('id', user.id)
-                    .single();
-                if (profile) userRole = profile.rol;
-            }
-
-            setTimeout(async () => {
-                await syncCartOnLogin();
-                if (userRole === 'admin') {
-                    // Si es admin, redirigir al panel de administración
-                    window.location.href = '/admin.html';
-                } else {
-                    window.location.href = '/'; // Redirigir a la página principal para usuarios normales
-                }
-            }, 1500);
+            return;
         }
+
+        if (authData.user && !authData.user.email_confirmed_at) {
+            showToast('Tu cuenta no ha sido verificada. Revisa tu correo.', 'error');
+            await supabase.auth.signOut();
+            submitButton.disabled = false;
+            submitButton.textContent = 'Iniciar Sesión';
+            return;
+        }
+
+        showToast('¡Inicio de sesión exitoso!', 'success');
+        
+        const { data: profile } = await supabase.from('profiles').select('rol').eq('id', authData.user.id).single();
+        
+        setTimeout(async () => {
+            await syncCartOnLogin();
+            const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else if (profile?.rol === 'admin') {
+                window.location.href = '/admin.html';
+            } else {
+                window.location.href = '/';
+            }
+        }, 1500);
     });
 }
 
-// ---------------------------------------------
-// --- 2. MANEJADOR DE REGISTRO (SIGN UP) ---
-// ---------------------------------------------
+/**
+ * Maneja el envío del formulario de registro.
+ * @param {HTMLFormElement} form - El formulario de registro.
+ */
 function handleRegisterForm(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -78,111 +69,38 @@ function handleRegisterForm(form) {
         const email = formData.get('email');
         const password = formData.get('password');
         
-        const userData = {
-            full_name: formData.get('name'),
-            username: formData.get('username'),
-            phone: formData.get('phone') || null, 
-        };
-
         if (password.length < 6) {
             showToast('La contraseña debe tener al menos 6 caracteres.', 'error');
             submitButton.disabled = false;
             submitButton.textContent = 'Crear Cuenta';
             return;
         }
-        if (!supabase) return showToast('Error de configuración de Supabase.');
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
-                    full_name: userData.full_name,
-                    username: userData.username,
-                    phone: userData.phone
+                    full_name: formData.get('name'),
+                    username: formData.get('username'),
+                    phone: formData.get('phone') || null,
                 }
             }
         });
 
-        if (authError) {
-            if (authError.message.includes('User already registered')) {
-                 showToast('Ya existe una cuenta con este correo. Intenta iniciar sesión.', 'error');
-            } else {
-                 showToast(`Error en el registro: ${authError.message}`, 'error'); // This line has a subtle change
-            }
+        if (error) {
+            showToast(error.message.includes('User already registered')
+                ? 'Ya existe una cuenta con este correo. Intenta iniciar sesión.'
+                : `Error en el registro: ${error.message}`, 'error');
         } else {
-             // En lugar de un toast, redirigimos a una página de instrucciones.
-             // Esto es más claro para el usuario.
-             showToast('¡Registro exitoso!', 'success');
-             setTimeout(() => window.location.href = '/check-email.html', 1000);
+            showToast('¡Registro exitoso!', 'success');
+            setTimeout(() => window.location.href = '/check-email.html', 1000);
         }
 
         submitButton.disabled = false;
         submitButton.textContent = 'Crear Cuenta';
     });
 }
-
-// ---------------------------------------------
-// --- 3. MANEJADOR DE RECUPERACIÓN DE CONTRASEÑA ---
-// ---------------------------------------------
-function handleForgotPasswordForm(form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Enviando...';
-
-        const email = new FormData(form).get('email');
-        if (!supabase) return showToast('Error de configuración de Supabase.');
-        
-        const redirectUrl = `${window.location.origin}/reset-password.html`;
-
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: redirectUrl,
-        });
-
-        if (error) {
-            showToast('Ocurrió un error. Verifica tu correo o intenta de nuevo.', 'error');
-        } else {
-            showToast('Se ha enviado un enlace de recuperación a tu correo.', 'success');
-            form.reset();
-        }
-        submitButton.disabled = false;
-        submitButton.textContent = 'Enviar Enlace';
-    });
-}
-
-// ---------------------------------------------
-// --- 4. MANEJADOR DE RESTABLECIMIENTO DE CONTRASEÑA ---
-// ---------------------------------------------------
-function handleResetPasswordForm(form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Guardando...';
-
-        const password = new FormData(form).get('password');
-        if (!supabase) return showToast('Error de configuración de Supabase.');
-
-        const { error } = await supabase.auth.updateUser({ password });
-
-        if (error) {
-            showToast(`Error al actualizar la contraseña: ${error.message}`, 'error');
-            submitButton.disabled = false;
-            submitButton.textContent = 'Guardar Nueva Contraseña';
-        } else {
-            showToast('¡Contraseña actualizada con éxito! Ya puedes iniciar sesión.', 'success');
-            setTimeout(() => {
-                window.location.href = '/login.html';
-            }, 3000);
-        }
-    });
-}
-
-// ---------------------------------------------
-// --- 5. MANEJO DE LA INTERFAZ DE USUARIO (UI) ---
-// ---------------------------------------------
 
 /**
  * Actualiza la barra de navegación para reflejar el estado de autenticación.
@@ -195,102 +113,79 @@ async function updateUI(session) {
     const navUserLink = document.getElementById('nav-user-link');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
-    const storeLinks = document.querySelectorAll('.store-link'); // This line has a subtle change
+    const storeLinks = document.querySelectorAll('.store-link'); // Seleccionamos los enlaces de la tienda
+    const isAdminPage = window.location.pathname.startsWith('/admin');
+
     if (session) {
         // Usuario logueado
-        if (navLogin) navLogin.style.display = 'none';
-        if (navRegister) navRegister.style.display = 'none';
+        navLogin.style.display = 'none';
+        navRegister.style.display = 'none';
 
-        if (navUser && navUserLink) {
-            const { data: profile } = await supabase.from('profiles').select('username').eq('id', session.user.id).single();
-            navUserLink.textContent = profile?.username || session.user.email;
-            navUser.style.display = 'block';
-        }
+        const { data: profile } = await supabase.from('profiles').select('username, rol').eq('id', session.user.id).single();
+        
+        navUserLink.textContent = profile?.username || session.user.email;
+        navUser.style.display = 'block';
+        navLogout.style.display = 'block';
 
-        let userRole = 'user'; // Rol por defecto
-        if (session.user) {
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('rol')
-                .eq('id', session.user.id)
-                .single();
-            if (profile) userRole = profile.rol;
-        }
-
-        if (navAdmin && userRole === 'admin') {
-            // --- LÓGICA PARA VISTA DE ADMINISTRADOR ---
-            // Ocultar enlaces de la tienda
-            storeLinks.forEach(link => link.style.display = 'none');
-            // Mostrar solo el enlace al panel de admin
+        if (profile?.rol === 'admin' && !isAdminPage) {
             navAdmin.style.display = 'block';
         } else {
-            // --- LÓGICA PARA VISTA DE USUARIO NORMAL ---
-            storeLinks.forEach(link => link.style.display = 'block'); // Asegurarse de que se vean
-            if (navAdmin) navAdmin.style.display = 'none';
+            navAdmin.style.display = 'none';
         }
 
-        if (navLogout) navLogout.style.display = 'block';
+        // Si es admin y está en la página de admin, ocultar los enlaces de la tienda
+        if (profile?.rol === 'admin' && isAdminPage) {
+            storeLinks.forEach(link => link.style.display = 'none');
+        } else {
+            storeLinks.forEach(link => link.style.display = 'list-item'); // O 'block' si prefieres
+        }
 
     } else {
         // Usuario no logueado
-        storeLinks.forEach(link => link.style.display = 'block');
-        if (navLogin) navLogin.style.display = 'block';
-        if (navRegister) navRegister.style.display = 'block';
-        if (navUser) navUser.style.display = 'none';
-        if (navLogout) navLogout.style.display = 'none';
-        if (navAdmin) navAdmin.style.display = 'none';
+        navLogin.style.display = 'block';
+        navRegister.style.display = 'block';
+        navUser.style.display = 'none';
+        navLogout.style.display = 'none';
+        navAdmin.style.display = 'none';
+        storeLinks.forEach(link => link.style.display = 'list-item');
     }
 }
 
-// ---------------------------------------------
-// --- 6. FUNCIÓN PRINCIPAL DE INICIALIZACIÓN ---
-// ---------------------------------------------
+/**
+ * Función principal de inicialización.
+ */
 async function main() {
-    try {
-        supabase = await getSupabaseClient();
-
-        if (!supabase) {
-            console.error("Error crítico: No se pudo inicializar el cliente de Supabase.");
-            showToast("Error de conexión con el servidor. Refresca la página para intentarlo de nuevo.", "error");
-            return;
-        }
-
-        const formHandlers = {
-            'login-form': handleLoginForm,
-            'register-form': handleRegisterForm,
-            'forgot-password-form': handleForgotPasswordForm,
-            'reset-password-form': handleResetPasswordForm,
-        };
-
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        updateUI(initialSession);
-
-        // Manejar el botón de logout de forma global
-        const logoutButton = document.getElementById('logout-button');
-        if (logoutButton) {
-            logoutButton.addEventListener('click', async (e) => {
-                e.preventDefault(); // Evita que el enlace recargue la página
-                await supabase.auth.signOut();
-                window.location.href = '/'; // Redirigir al inicio después de cerrar sesión
-            });
-        }
-
-        // Escuchar futuros cambios de autenticación
-        supabase.auth.onAuthStateChange((event, session) => {
-            console.log(`Auth event: ${event}`, session);
-            updateUI(session);
-        });
-
-        for (const formId in formHandlers) {
-            const form = document.getElementById(formId);
-            if (form) {
-                formHandlers[formId](form); // Sintaxis corregida para llamar a la función.
-            }
-        }
-    } catch (error) {
-        console.error("Error crítico en la inicialización de la autenticación:", error);
-        showToast("Error de conexión. Por favor, refresca la página.", "error");
+    supabase = await getSupabaseClient();
+    if (!supabase) {
+        console.error("Error crítico: No se pudo inicializar el cliente de Supabase.");
+        return;
     }
+
+    // Manejar formularios de autenticación si existen en la página actual
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) handleLoginForm(loginForm);
+
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) handleRegisterForm(registerForm);
+
+    // Manejar el botón de logout de forma global
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await supabase.auth.signOut();
+            window.location.href = '/';
+        });
+    }
+
+    // Escuchar cambios de autenticación para actualizar la UI
+    supabase.auth.onAuthStateChange((_event, session) => {
+        updateUI(session);
+    });
+
+    // Actualizar la UI con la sesión inicial
+    const { data: { session } } = await supabase.auth.getSession();
+    updateUI(session);
 }
 
 document.addEventListener('DOMContentLoaded', main);
