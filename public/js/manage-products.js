@@ -10,14 +10,52 @@ async function loadProducts() {
     const container = document.getElementById('products-list-container');
     if (!container) return;
 
-    container.innerHTML = '<p>Cargando productos...</p>';
+    container.innerHTML = '<p>Cargando todos los productos...</p>';
     try {
-        const response = await fetch('/api/products');
-        if (!response.ok) throw new Error('No se pudieron cargar los productos.');
-        
-        const { products } = await response.json();
+        const productsPerPage = 12; // Límite de productos por página que usa el API.
+        let allProducts = [];
 
-        if (!products || products.length === 0) {
+        // 1. Hacemos una primera llamada para obtener el total de productos y la primera página.
+        const firstPageResponse = await fetch(`/api/products?page=1&limit=${productsPerPage}&t=${Date.now()}`, {
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!firstPageResponse.ok) throw new Error('No se pudo cargar la primera página de productos.');
+        
+        const { products: firstPageProducts, totalCount } = await firstPageResponse.json();
+        allProducts = allProducts.concat(firstPageProducts);
+
+        const totalPages = Math.ceil(totalCount / productsPerPage);
+
+        // 2. Si hay más páginas, las pedimos todas en paralelo.
+        if (totalPages > 1) {
+            const pagePromises = [];
+            for (let page = 2; page <= totalPages; page++) {
+                pagePromises.push(
+                    fetch(`/api/products?page=${page}&limit=${productsPerPage}&t=${Date.now()}`, {
+                        headers: { 'Cache-Control': 'no-cache' }
+                    }).then(res => {
+                        if (!res.ok) {
+                            console.error(`Error al cargar la página ${page}`);
+                            return { products: [] }; // Devolver vacío para no romper Promise.all
+                        }
+                        return res.json();
+                    })
+                );
+            }
+
+            const remainingPagesResults = await Promise.all(pagePromises);
+            
+            remainingPagesResults.forEach(result => {
+                if (result.products) {
+                    allProducts = allProducts.concat(result.products);
+                }
+            });
+        }
+
+        // 3. Ordenamos la lista completa por ID para un orden consistente.
+        allProducts.sort((a, b) => a.id_producto - b.id_producto);
+
+        if (!allProducts || allProducts.length === 0) {
             container.innerHTML = '<p>No hay productos registrados.</p>';
             return;
         }
@@ -37,7 +75,7 @@ async function loadProducts() {
                 </tr>
             </thead>
             <tbody>
-                ${products.map(product => `
+                ${allProducts.map(product => `
                     <tr data-id="${product.id_producto}">
                         <td>${product.id_producto}</td>
                         <td>${product.nombre}</td>
@@ -66,7 +104,8 @@ async function loadProducts() {
         });
 
     } catch (error) {
-        container.innerHTML = `<p>Error al cargar productos: ${error.message}</p>`;
+        container.innerHTML = `<p>Error al cargar la lista completa de productos: ${error.message}</p>`;
+        console.error(error);
     }
 }
 
@@ -128,8 +167,20 @@ export async function init() {
     loadProducts();
 
     // Escuchar eventos para recargar la lista de productos
+    // (Aunque handleDelete ya recarga, mantenemos esto por consistencia si se añade desde otro lado)
     document.addEventListener('productAdded', loadProducts);
     document.addEventListener('productDeleted', loadProducts);
+
+    // SOLUCIÓN: Forzar la recarga de productos cuando se vuelve a la página.
+    // Esto soluciona el problema de que el navegador muestre una lista "vieja" (en caché)
+    // después de editar un producto y volver atrás.
+    window.addEventListener('pageshow', function(event) {
+        // event.persisted es true si la página se carga desde la caché del navegador (bfcache)
+        if (event.persisted) {
+            console.log('Página cargada desde caché, recargando productos...');
+            loadProducts();
+        }
+    });
 }
 
 // document.addEventListener('DOMContentLoaded', init); // Lo llamará admin.js
