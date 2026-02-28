@@ -252,7 +252,8 @@ function handleVerifyPinForm(form) {
             submitButton.disabled = false;
             submitButton.textContent = 'Verificar y Cambiar Contraseña';
         } else {
-            showToast('Contraseña actualizada con éxito. Redirigiendo al login...', 'success');
+            showToast('Contraseña actualizada con éxito. Redirigiendo a Iniciar Sesión...', 'success');
+            await supabase.auth.signOut(); // Forzar cierre de sesión para que el usuario inicie sesión manualmente
             setTimeout(() => window.location.href = '/login.html', 2000);
         }
     });
@@ -294,9 +295,10 @@ async function main() {
         const hasVerificationToken = window.location.hash && window.location.hash.includes('access_token');
 
         if (isOnLoginPage && hasVerificationToken) {
-            showToast('¡Cuenta verificada! Redirigiendo...', 'success');
+            showToast('¡Cuenta verificada! Redirigiendo a Iniciar Sesión...', 'success');
             history.replaceState(null, '', window.location.pathname); // Limpiar el hash para evitar re-activación
-            setTimeout(() => window.location.href = '/', 1500);
+            await supabase.auth.signOut(); // Forzar cierre de sesión para que el usuario inicie sesión manualmente
+            setTimeout(() => window.location.href = '/login.html', 1500);
         } else if (isOnLoginPage || document.getElementById('register-form')) {
             // Si el usuario ya tiene sesión y está en login/register (y no es por verificación), redirigir al inicio.
             window.location.href = '/';
