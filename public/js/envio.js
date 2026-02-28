@@ -1,108 +1,76 @@
-import { getCart } from '/js/cart-logic.js';
+import { shoppingCart } from '/js/cart-logic.js';
 import { getSupabaseClient } from '/js/supabaseClient.js';
+import { showToast } from '/js/utils.js';
+import '/js/global.js';
 
-const shippingForm = document.getElementById('shipping-form');
-const summaryCartItems = document.getElementById('summary-cart-items');
-const summaryCartTotal = document.getElementById('summary-cart-total');
-const continueToPaymentBtn = document.getElementById('continue-to-payment-btn');
-
-function formatPrice(amount) {
-    // CORRECCIÓN: El precio viene en centavos, hay que dividirlo por 100 para mostrarlo en pesos.
-    return new Intl.NumberFormat('es-CO', { 
-        style: 'currency', 
-        currency: 'COP',
-        minimumFractionDigits: 0 
-    }).format(amount / 100);
-}
-
-function renderOrderSummary() {
-    const cart = getCart();
-    if (!summaryCartItems || !summaryCartTotal) return;
-
-    if (cart.length === 0) {
-        summaryCartItems.innerHTML = '<p>No hay productos en tu carrito.</p>';
-        summaryCartTotal.textContent = formatPrice(0);
-        continueToPaymentBtn.disabled = true;
-        return;
-    }
-
-    let total = 0;
-    summaryCartItems.innerHTML = cart.map(item => {
-        const itemTotal = item.precio * item.quantity;
-        total += itemTotal;
-        return `
-            <div class="summary-item">
-                <span>${item.nombre} (x${item.quantity})</span>
-                <span>${formatPrice(itemTotal)}</span>
-            </div>
-        `;
-    }).join('');
-
-    summaryCartTotal.textContent = formatPrice(total);
-}
-
-async function handleFormSubmit(event) {
-    event.preventDefault();
-    continueToPaymentBtn.disabled = true;
-    continueToPaymentBtn.textContent = 'Procesando...';
-
+async function initCheckout() {
+    // 1. Verificar autenticación
     const supabase = await getSupabaseClient();
-    if (!supabase) {
-        alert('Error de configuración. No se pudo conectar.');
-        return;
-    }
-
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-        alert('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
-        window.location.href = '/login.html';
+        window.location.href = '/login.html?redirect=/envio.html';
         return;
     }
 
-    const cart = getCart();
+    // 2. Cargar carrito y calcular total
+    const cart = shoppingCart.getCart();
     if (cart.length === 0) {
-        alert('Tu carrito está vacío.');
-        window.location.href = '/';
+        showToast('Tu carrito está vacío.', 'error');
+        setTimeout(() => window.location.href = '/', 1500);
         return;
     }
 
-    const formData = new FormData(shippingForm);
-    const shippingData = {
-        items: cart,
-        direccion_envio: formData.get('direccion_envio'),
-        telefono_contacto: formData.get('telefono_contacto'),
-        notas: formData.get('notas')
-    };
+    const totalElement = document.getElementById('checkout-total');
+    if (totalElement) {
+        const total = cart.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
+        totalElement.textContent = shoppingCart.formatPrice(total);
+    }
 
-    try {
-        const response = await fetch('/api/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify(shippingData)
+    // 3. Manejar el envío del formulario
+    const form = document.getElementById('checkout-form');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // IMPORTANTE: Evita que la página se recargue
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            const formData = new FormData(form);
+            const orderData = {
+                items: cart,
+                direccion_envio: formData.get('direccion'),
+                telefono_contacto: formData.get('telefono'),
+                notas: formData.get('notas')
+            };
+
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.error || 'Error al procesar el pedido');
+
+                if (result.url) {
+                    window.location.href = result.url; // Redirigir a Stripe
+                } else {
+                    throw new Error('Error de configuración de pago');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast(error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Pagar y Finalizar';
+            }
         });
-
-        const { url, error } = await response.json();
-
-        if (error) {
-            throw new Error(error);
-        }
-
-        // Redirigir al usuario a la página de pago de Stripe
-        window.location.href = url;
-
-    } catch (err) {
-        alert(`Error al crear el pedido: ${err.message}`);
-        continueToPaymentBtn.disabled = false;
-        continueToPaymentBtn.textContent = 'Continuar a Pagar';
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    renderOrderSummary();
-    if (shippingForm) {
-        shippingForm.addEventListener('submit', handleFormSubmit);
-    }
-});
+document.addEventListener('DOMContentLoaded', initCheckout);

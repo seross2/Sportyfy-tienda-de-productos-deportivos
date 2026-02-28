@@ -1,5 +1,6 @@
 import { getSupabaseClient } from './supabaseClient.js';
 import { showToast } from './utils.js';
+import '/js/global.js'; // Asegura que el menú se cargue en la página de perfil
 
 let supabase;
 let currentUserProfile = null;
@@ -116,7 +117,7 @@ async function loadOrderHistory() {
                 <div class="order-item-header">
                     <div>
                         <strong>Pedido #${order.id_pedido}</strong>
-                        <p style="font-size: 0.9rem; color: var(--text-color-light);">Fecha: ${new Date(order.fecha_pedido).toLocaleDateString()}</p>
+                        <p class="order-date">Fecha: ${new Date(order.fecha_pedido).toLocaleDateString()}</p>
                     </div>
                     <span class="order-status ${order.estado}">${order.estado}</span>
                 </div>
@@ -166,6 +167,7 @@ async function handleProfileUpdate(e) {
 
     const formData = new FormData(form);
     const updates = {
+        id: currentUserProfile.id, // Asegurarse de que el ID esté en el objeto para el upsert
         username: formData.get('username'),
         full_name: formData.get('full_name'),
         phone: formData.get('phone'),
@@ -174,10 +176,10 @@ async function handleProfileUpdate(e) {
         updated_at: new Date(),
     };
 
+    // Usamos upsert para crear el perfil si no existe, o actualizarlo si ya existe.
     const { error } = await supabase
         .from('profiles')
-        .update(updates)
-        .eq('id', currentUserProfile.id);
+        .upsert(updates);
 
     if (error) {
         showToast(`Error al actualizar: ${error.message}`, 'error');
@@ -207,16 +209,20 @@ async function initProfilePage() {
         return;
     }
 
-    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
 
-    if (error || !profile) {
+    if (error) {
         showToast('No se pudo cargar la información del perfil.', 'error');
         const container = document.getElementById('profile-page-container');
         if (container) container.innerHTML = '<p>Error al cargar el perfil. Intenta recargar la página.</p>';
         return;
     }
 
-    currentUserProfile = { ...profile, email: session.user.email };
+    // Si el perfil no existe, creamos un objeto por defecto para que el usuario pueda rellenarlo
+    currentUserProfile = profile 
+        ? { ...profile, email: session.user.email } 
+        : { id: session.user.id, email: session.user.email, username: session.user.email.split('@')[0], full_name: '', phone: '', website: '', avatar_url: '' };
+
     renderProfileLayout(currentUserProfile);
     loadOrderHistory();
 }

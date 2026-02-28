@@ -4,6 +4,7 @@ import { init as initProducts } from '/js/manage-products.js';
 import { init as initCategories } from '/js/manage-categories.js';
 import { init as initBrands } from '/js/manage-brands.js';
 import { init as initSizes } from '/js/manage-sizes.js';
+import '/js/global.js'; // Asegura que el menú se cargue en el panel de admin
 
 let supabase;
 
@@ -81,7 +82,7 @@ function renderAdminLayout() {
                         <h2>Gestionar Productos</h2>
                         <button id="toggle-add-product-form" class="btn btn-primary">Añadir Nuevo Producto</button>
                     </div>
-                    <div id="add-product-container" class="card" style="display: none;">
+                    <div id="add-product-container" class="card hidden">
                         <h3>Añadir Nuevo Producto</h3>
                         <form id="add-product-form">
                             <div class="form-grid">
@@ -141,7 +142,7 @@ function renderAdminLayout() {
                         <h2>Gestionar Categorías</h2>
                         <button id="toggle-add-category-form" class="btn btn-primary">Añadir Nueva Categoría</button>
                     </div>
-                    <div id="add-category-container" class="card" style="display: none;">
+                    <div id="add-category-container" class="card hidden">
                         <h3>Añadir Nueva Categoría</h3>
                         <form id="add-category-form" class="form-inline">
                             <div class="form-group">
@@ -163,7 +164,7 @@ function renderAdminLayout() {
                         <h2>Gestionar Marcas</h2>
                         <button id="toggle-add-brand-form" class="btn btn-primary">Añadir Nueva Marca</button>
                     </div>
-                    <div id="add-brand-container" class="card" style="display: none;">
+                    <div id="add-brand-container" class="card hidden">
                         <h3>Añadir Nueva Marca</h3>
                         <form id="add-brand-form" class="form-inline">
                             <div class="form-group">
@@ -185,7 +186,7 @@ function renderAdminLayout() {
                         <h2>Gestionar Tallas</h2>
                         <button id="toggle-add-size-form" class="btn btn-primary">Añadir Nueva Talla</button>
                     </div>
-                    <div id="add-size-container" class="card" style="display: none;">
+                    <div id="add-size-container" class="card hidden">
                         <h3>Añadir Nueva Talla</h3>
                         <form id="add-size-form" class="form-inline">
                             <div class="form-group">
@@ -264,8 +265,8 @@ function setupFormToggles() {
         const formContainer = document.getElementById(containerId);
         if (toggleBtn && formContainer) {
             toggleBtn.addEventListener('click', () => {
-                const isVisible = formContainer.style.display !== 'none';
-                formContainer.style.display = isVisible ? 'none' : 'block';
+                formContainer.classList.toggle('hidden');
+                const isVisible = !formContainer.classList.contains('hidden');
                 toggleBtn.textContent = isVisible ? `Añadir Nuev${text === 'Producto' ? 'o' : 'a'} ${text}` : 'Ocultar Formulario';
             });
         }

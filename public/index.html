@@ -13,27 +13,7 @@
     <header>
         <div class="container">
             <h1><a href="/" class="logo">Sportify Store</a></h1>
-            <nav>
-                <!-- Botón de hamburguesa para móvil -->
-                <button class="nav-toggle" aria-label="Abrir menú">
-                    <span class="hamburger"></span>
-                </button>
-                <!-- CORRECCIÓN: Unificamos todo en una sola lista 'nav-links' -->
-                <ul class="nav-links">
-                    <li class="store-link"><a href="/">Productos</a></li>
-                    <li class="store-link"><a href="/cart.html"><img src="/icons/icono carrito.png" alt="Carrito"
-                                class="nav-icon"></a></li>
-                    <li class="store-link"><a href="/contact.html">Contacto</a></li>
-                    <!-- Enlaces de autenticación y perfil -->
-                    <li id="nav-login" style="display: none;"><a href="/login.html">Login</a></li>
-                    <li id="nav-register" style="display: none;"><a href="/register.html">Registro</a></li>
-                    <li id="nav-user" style="display: none;">
-                        <a href="/profile.html" id="nav-user-link">Usuario</a>
-                    </li>
-                    <li id="nav-admin" style="display: none;"><a href="/admin.html">Panel Admin</a></li>
-                    <li id="nav-logout" style="display: none;"><a href="#" id="logout-button">Cerrar Sesión</a></li>
-                </ul>
-            </nav>
+            <nav><!-- El contenido del menú se renderiza dinámicamente con JavaScript --></nav>
         </div>
     </header>
 
@@ -71,13 +51,16 @@
                         </select>
                         <div class="price-filter-container">
                             <label for="price-filter">Precio máximo: <span id="price-output"></span></label>
-                            <input type="range" id="price-filter" min="600" max="3000" step="100" value="3000">
+                            <input type="range" id="price-filter" min="5000000" max="50000000" step="100000"
+                                value="50000000">
                         </div>
                         <button id="reset-filters">Limpiar Filtros</button>
                     </div>
                     <!-- ID CORREGIDO para que main.js pueda encontrar este contenedor -->
                     <div id="product-list" class="product-grid">
                     </div>
+                    <!-- Contenedor para los controles de paginación -->
+                    <div id="pagination-container" class="pagination-container"></div>
                 </section>
             </div>
         </div>
@@ -121,7 +104,7 @@
     <script type="module" src="/js/supabaseClient.js"></script>
     <script type="module" src="/js/cart-logic.js"></script>
     <script type="module" src="/js/auth.js"></script>
-    <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/app.js"></script>
     <script type="module" src="/js/carousel.js"></script>
 </body>
 

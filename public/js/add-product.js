@@ -2,6 +2,8 @@ import { getSupabaseClient } from '/js/supabaseClient.js';
 import { showToast } from '/js/utils.js';
 
 let supabase;
+let isEditMode = false;
+let productIdToEdit = null;
 
 /**
  * Verifica si el usuario actual es un administrador.
@@ -84,10 +86,47 @@ async function populateFormSelects() {
 }
 
 /**
+ * Carga los datos de un producto existente para editarlo.
+ */
+async function loadProductData(id) {
+    try {
+        const response = await fetch(`/api/products/${id}`);
+        if (!response.ok) throw new Error('No se pudo cargar el producto');
+        const product = await response.json();
+
+        // Cambiar el título y el botón visualmente
+        const title = document.querySelector('h1, h2, h3');
+        if (title && title.textContent.includes('Añadir')) {
+            title.textContent = 'Editar Producto';
+        }
+        
+        const form = document.getElementById('add-product-form');
+        if (form) {
+            form.querySelector('[name="nombre"]').value = product.nombre;
+            form.querySelector('[name="precio"]').value = product.precio;
+            form.querySelector('[name="stock"]').value = product.stock;
+            form.querySelector('[name="imagen_url"]').value = product.imagen_url;
+            form.querySelector('[name="descripcion"]').value = product.descripcion || '';
+            
+            // Asignar valores a los selects (asegurándose de que coincidan con los IDs)
+            if (product.id_categoria) form.querySelector('[name="id_categoria"]').value = product.id_categoria;
+            if (product.id_marca) form.querySelector('[name="id_marca"]').value = product.id_marca;
+            if (product.id_talla) form.querySelector('[name="id_talla"]').value = product.id_talla;
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Guardar Cambios';
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Error al cargar los datos del producto.', 'error');
+    }
+}
+
+/**
  * Maneja el envío del formulario para añadir un nuevo producto.
  * (Esta función ya estaba en admin.js, la adaptamos aquí)
  */
-function handleAddProductForm() {
+function handleFormSubmit() {
     const form = document.getElementById('add-product-form');
     if (!form) return;
 
@@ -95,7 +134,7 @@ function handleAddProductForm() {
         e.preventDefault();
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
-        submitButton.textContent = 'Añadiendo...';
+        submitButton.textContent = isEditMode ? 'Guardando...' : 'Añadiendo...';
 
         const formData = new FormData(form);
         const productData = Object.fromEntries(formData.entries());
@@ -109,8 +148,12 @@ function handleAddProductForm() {
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch('/api/products', {
-                method: 'POST',
+            
+            const url = isEditMode ? `/api/products/${productIdToEdit}` : '/api/products';
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`
@@ -120,13 +163,19 @@ function handleAddProductForm() {
 
             if (!response.ok) throw new Error((await response.json()).error || 'Error en el servidor');
 
-            showToast('Producto añadido con éxito', 'success');
-            form.reset(); // Limpiar el formulario
+            showToast(isEditMode ? 'Producto actualizado con éxito' : 'Producto añadido con éxito', 'success');
+            
+            if (!isEditMode) {
+                form.reset(); // Limpiar el formulario solo si estamos añadiendo
+            } else {
+                // Redirigir al admin después de editar para ver los cambios
+                setTimeout(() => window.location.href = '/admin.html', 1500);
+            }
         } catch (error) {
             showToast(`Error: ${error.message}`, 'error');
         } finally {
             submitButton.disabled = false;
-            submitButton.textContent = 'Añadir Producto';
+            submitButton.textContent = isEditMode ? 'Guardar Cambios' : 'Añadir Producto';
         }
     });
 }
@@ -144,8 +193,18 @@ async function initAddProductPage() {
     const isAdmin = await checkAdminStatus();
     if (isAdmin) {
         // Si es admin, cargar los selectores del formulario
-        populateFormSelects();
-        handleAddProductForm(); // Y preparar el formulario para ser enviado
+        await populateFormSelects();
+        
+        // Verificar si hay un ID en la URL para modo edición
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            isEditMode = true;
+            productIdToEdit = editId;
+            await loadProductData(editId);
+        }
+
+        handleFormSubmit(); // Y preparar el formulario para ser enviado
     }
 }
 

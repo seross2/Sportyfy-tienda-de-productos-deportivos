@@ -1,6 +1,7 @@
 import { getSupabaseClient } from './supabaseClient.js';
-import { syncCartOnLogin } from './cart-logic.js';
+import { shoppingCart } from './cart-logic.js';
 import { showToast } from './utils.js';
+import '/js/global.js'; // Asegura que el menú global se cargue y gestione
 
 let supabase;
 
@@ -41,7 +42,7 @@ function handleLoginForm(form) {
         const { data: profile } = await supabase.from('profiles').select('rol').eq('id', authData.user.id).single();
         
         setTimeout(async () => {
-            await syncCartOnLogin();
+            await shoppingCart.syncOnLogin();
             const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
             if (redirectUrl) {
                 window.location.href = redirectUrl;
@@ -103,55 +104,6 @@ function handleRegisterForm(form) {
 }
 
 /**
- * Actualiza la barra de navegación para reflejar el estado de autenticación.
- * @param {import('@supabase/supabase-js').Session | null} session
- */
-async function updateUI(session) {
-    const navLogin = document.getElementById('nav-login');
-    const navRegister = document.getElementById('nav-register');
-    const navUser = document.getElementById('nav-user');
-    const navUserLink = document.getElementById('nav-user-link');
-    const navLogout = document.getElementById('nav-logout');
-    const navAdmin = document.getElementById('nav-admin');
-    const storeLinks = document.querySelectorAll('.store-link'); // Seleccionamos los enlaces de la tienda
-    const isAdminPage = window.location.pathname.startsWith('/admin');
-
-    if (session) {
-        // Usuario logueado
-        navLogin.style.display = 'none';
-        navRegister.style.display = 'none';
-
-        const { data: profile } = await supabase.from('profiles').select('username, rol').eq('id', session.user.id).single();
-        
-        navUserLink.textContent = profile?.username || session.user.email;
-        navUser.style.display = 'block';
-        navLogout.style.display = 'block';
-
-        if (profile?.rol === 'admin' && !isAdminPage) {
-            navAdmin.style.display = 'block';
-        } else {
-            navAdmin.style.display = 'none';
-        }
-
-        // Si es admin y está en la página de admin, ocultar los enlaces de la tienda
-        if (profile?.rol === 'admin' && isAdminPage) {
-            storeLinks.forEach(link => link.style.display = 'none');
-        } else {
-            storeLinks.forEach(link => link.style.display = 'list-item'); // O 'block' si prefieres
-        }
-
-    } else {
-        // Usuario no logueado
-        navLogin.style.display = 'block';
-        navRegister.style.display = 'block';
-        navUser.style.display = 'none';
-        navLogout.style.display = 'none';
-        navAdmin.style.display = 'none';
-        storeLinks.forEach(link => link.style.display = 'list-item');
-    }
-}
-
-/**
  * Función principal de inicialización.
  */
 async function main() {
@@ -168,24 +120,6 @@ async function main() {
     const registerForm = document.getElementById('register-form');
     if (registerForm) handleRegisterForm(registerForm);
 
-    // Manejar el botón de logout de forma global
-    const logoutButton = document.getElementById('logout-button');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await supabase.auth.signOut();
-            window.location.href = '/';
-        });
-    }
-
-    // Escuchar cambios de autenticación para actualizar la UI
-    supabase.auth.onAuthStateChange((_event, session) => {
-        updateUI(session);
-    });
-
-    // Actualizar la UI con la sesión inicial
-    const { data: { session } } = await supabase.auth.getSession();
-    updateUI(session);
 }
 
 document.addEventListener('DOMContentLoaded', main);

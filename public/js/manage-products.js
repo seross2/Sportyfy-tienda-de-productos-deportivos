@@ -15,9 +15,9 @@ async function loadProducts() {
         const response = await fetch('/api/products');
         if (!response.ok) throw new Error('No se pudieron cargar los productos.');
         
-        const products = await response.json();
+        const { products } = await response.json();
 
-        if (products.length === 0) {
+        if (!products || products.length === 0) {
             container.innerHTML = '<p>No hay productos registrados.</p>';
             return;
         }

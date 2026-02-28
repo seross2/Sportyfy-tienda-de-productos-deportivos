@@ -10,7 +10,8 @@ async function loadBrands() {
 
     container.innerHTML = '<p>Cargando marcas...</p>';
     try {
-        const response = await fetch(API_ENDPOINT);
+        const response = await fetch('/api/marcas');
+        if (!response.ok) throw new Error('No se pudieron cargar las marcas.');
         const brands = await response.json();
 
         if (brands.length === 0) {
@@ -34,7 +35,7 @@ async function loadBrands() {
                         <td>${brand.id_marca}</td>
                         <td>${brand.nombre}</td>
                         <td>
-                            <button class="btn btn-edit" data-id="${brand.id_marca}" data-name="${brand.nombre}">Editar</button>
+                            <button class="btn btn-edit" data-id="${brand.id_marca}">Editar</button>
                             <button class="btn btn-delete" data-id="${brand.id_marca}">Eliminar</button>
                         </td>
                     </tr>
@@ -45,36 +46,36 @@ async function loadBrands() {
         container.innerHTML = '';
         container.appendChild(table);
 
-        container.querySelectorAll('.edit-btn').forEach(button => button.addEventListener('click', handleEdit));
-        container.querySelectorAll('.delete-btn').forEach(button => button.addEventListener('click', handleDelete));
+        container.querySelectorAll('.btn-edit').forEach(button => button.addEventListener('click', handleEdit));
+        container.querySelectorAll('.btn-delete').forEach(button => button.addEventListener('click', handleDelete));
 
     } catch (error) {
-        container.innerHTML = `<p>Error: ${error.message}</p>`;
+        container.innerHTML = `<p>Error al cargar marcas: ${error.message}</p>`;
     }
 }
 
 async function handleEdit(event) {
     const id = event.target.dataset.id;
-    const currentName = event.target.dataset.name;
-    const newName = prompt(`Introduce el nuevo nombre para la marca "${currentName}":`, currentName);
+    const currentName = event.target.closest('tr').querySelector('td:nth-child(2)').textContent;
+    const newName = prompt('Introduce el nuevo nombre para la marca:', currentName);
 
-    if (!newName || newName.trim() === '' || newName === currentName) return;
-
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('Sesión no válida.');
-
-        const response = await fetch(`${API_ENDPOINT}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-            body: JSON.stringify({ nombre: newName.trim() })
-        });
-
-        if (!response.ok) throw new Error((await response.json()).error || 'No se pudo actualizar la marca.');
-        showToast('Marca actualizada con éxito.', 'success');
-        loadBrands();
-    } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
+    if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(`/api/marcas/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ nombre: newName })
+            });
+            if (!response.ok) throw new Error('No se pudo actualizar la marca.');
+            showToast('Marca actualizada con éxito.', 'success');
+            loadBrands();
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        }
     }
 }
 
@@ -86,7 +87,7 @@ async function handleDelete(event) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Sesión no válida.');
 
-        const response = await fetch(`${API_ENDPOINT}/${id}`, {
+        const response = await fetch(`/api/marcas/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
@@ -100,7 +101,7 @@ async function handleDelete(event) {
         }
 
         showToast('Marca eliminada con éxito.', 'success');
-        document.querySelector(`tr[data-id="${id}"]`).remove();
+        loadBrands();
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
     }
@@ -134,6 +135,7 @@ async function handleAddBrandForm() {
 
 export async function init() {
     supabase = await getSupabaseClient();
+    if (!document.getElementById('brands-list-container')) return;
     loadBrands();
     handleAddBrandForm();
 }
