@@ -2,21 +2,31 @@ import { getSupabaseClient } from '/js/supabaseClient.js';
 import { showToast } from '/js/utils.js';
 
 let supabase;
-const API_ENDPOINT = '/api/tallas';
+let isEditMode = false;
+let sizeIdToEdit = null;
 
+/**
+ * Carga y muestra las tallas en la tabla.
+ */
 async function loadSizes() {
     const container = document.getElementById('sizes-list-container');
     if (!container) return;
 
     container.innerHTML = '<p>Cargando tallas...</p>';
-    try {
-        const response = await fetch(API_ENDPOINT);
-        const sizes = await response.json();
 
-        if (sizes.length === 0) {
+    try {
+        const response = await fetch(`/api/tallas?t=${Date.now()}`, {
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!response.ok) throw new Error('Error al cargar las tallas');
+        const tallas = await response.json();
+
+        if (tallas.length === 0) {
             container.innerHTML = '<p>No hay tallas registradas.</p>';
             return;
         }
+
+        tallas.sort((a, b) => a.id_talla - b.id_talla);
 
         const table = document.createElement('table');
         table.className = 'admin-table';
@@ -24,126 +34,159 @@ async function loadSizes() {
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Tipo</th>
+                    <th>Categoría</th>
                     <th>Valor</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                ${sizes.map(size => `
-                    <tr data-id="${size.id_talla}">
-                        <td>${size.id_talla}</td>
-                        <td>${size.tipo}</td>
-                        <td>${size.valor}</td>
+                ${tallas.map(talla => `
+                    <tr data-id="${talla.id_talla}">
+                        <td>${talla.id_talla}</td>
+                        <td>${talla.categorias?.nombre || 'N/A'}</td>
+                        <td>${talla.valor}</td>
                         <td>
-                            <button class="btn btn-edit" data-id="${size.id_talla}" data-tipo="${size.tipo}" data-valor="${size.valor}">Editar</button>
-                            <button class="btn btn-delete" data-id="${size.id_talla}">Eliminar</button>
+                            <button class="btn btn-edit" 
+                                data-id="${talla.id_talla}" 
+                                data-valor="${talla.valor}"
+                                data-categoria-id="${talla.id_categoria || ''}">
+                                Editar
+                            </button>
+                            <button class="btn btn-delete" data-id="${talla.id_talla}">Eliminar</button>
                         </td>
                     </tr>
                 `).join('')}
             </tbody>
         `;
-
         container.innerHTML = '';
         container.appendChild(table);
 
-        container.querySelectorAll('.btn-edit').forEach(button => button.addEventListener('click', handleEdit));
-        container.querySelectorAll('.btn-delete').forEach(button => button.addEventListener('click', handleDelete));
+        // Add event listeners
+        container.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditClick));
+        container.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', handleDeleteClick));
 
     } catch (error) {
-        container.innerHTML = `<p>Error: ${error.message}</p>`;
+        console.error(error);
+        container.innerHTML = '<p>Error al cargar la lista de tallas.</p>';
     }
 }
 
-async function handleEdit(event) {
-    const id = event.target.dataset.id;
-    const currentTipo = event.target.dataset.tipo;
-    const currentValor = event.target.dataset.valor;
+/**
+ * Prepara el formulario para editar una talla.
+ */
+function handleEditClick(event) {
+    const button = event.target;
+    sizeIdToEdit = button.dataset.id;
+    isEditMode = true;
 
-    const newTipo = prompt(`Introduce el nuevo tipo para la talla (actual: ${currentTipo}):`, currentTipo);
-    if (newTipo === null) return; // El usuario canceló
+    const formContainer = document.getElementById('add-size-container');
+    const form = document.getElementById('add-size-form');
+    const title = formContainer.querySelector('h3');
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    const newValor = prompt(`Introduce el nuevo valor para la talla (actual: ${currentValor}):`, currentValor);
-    if (newValor === null) return; // El usuario canceló
+    // Populate form fields
+    form.querySelector('[name="id_categoria"]').value = button.dataset.categoriaId;
+    form.querySelector('[name="valor"]').value = button.dataset.valor;
 
-    if ((!newTipo || newTipo.trim() === '') && (!newValor || newValor.trim() === '')) return;
-
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('Sesión no válida.');
-
-        const response = await fetch(`${API_ENDPOINT}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-            body: JSON.stringify({ tipo: newTipo.trim(), valor: newValor.trim() })
-        });
-
-        if (!response.ok) throw new Error((await response.json()).error || 'No se pudo actualizar la talla.');
-        showToast('Talla actualizada con éxito.', 'success');
-        loadSizes();
-    } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
-    }
+    // Update UI for edit mode
+    title.textContent = 'Editar Talla';
+    submitBtn.textContent = 'Actualizar Talla';
+    formContainer.classList.remove('hidden');
+    formContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
-async function handleDelete(event) {
+/**
+ * Elimina una talla.
+ */
+async function handleDeleteClick(event) {
     const id = event.target.dataset.id;
-    if (!confirm(`¿Estás seguro de que quieres eliminar la talla con ID ${id}?`)) return;
+    if (!confirm(`¿Estás seguro de eliminar la talla con ID ${id}?`)) return;
 
     try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('Sesión no válida.');
-
-        const response = await fetch(`${API_ENDPOINT}/${id}`, {
+        const response = await fetch(`/api/tallas/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            if (errorData.details?.includes('violates foreign key constraint')) {
-                throw new Error('No se puede eliminar. La talla está en uso por uno o más productos.');
-            }
-            throw new Error(errorData.error || 'No se pudo eliminar la talla.');
+        if (response.ok) {
+            showToast('Talla eliminada con éxito', 'success');
+            loadSizes(); // Reload the list
+        } else {
+            const err = await response.json();
+            throw new Error(err.details || 'No se pudo eliminar la talla.');
         }
-
-        showToast('Talla eliminada con éxito.', 'success');
-        document.querySelector(`tr[data-id="${id}"]`).remove();
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
     }
 }
 
-async function handleAddSizeForm() {
+/**
+ * Maneja el envío del formulario (Crear o Editar).
+ */
+function handleSizeFormSubmit() {
     const form = document.getElementById('add-size-form');
     if (!form) return;
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
         const formData = new FormData(form);
-        const sizeData = Object.fromEntries(formData.entries());
+        const sizeData = {
+            id_categoria: formData.get('id_categoria'),
+            valor: formData.get('valor')
+        };
+
+        const url = isEditMode ? `/api/tallas/${sizeIdToEdit}` : '/api/tallas';
+        const method = isEditMode ? 'PUT' : 'POST';
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(API_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }, body: JSON.stringify(sizeData) });
-            if (!response.ok) throw new Error((await response.json()).error || 'Error en el servidor');
-            showToast('Talla añadida con éxito', 'success');
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify(sizeData)
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.details || 'Error al guardar la talla');
+            }
+
+            showToast(isEditMode ? 'Talla actualizada con éxito' : 'Talla añadida con éxito', 'success');
+            
             form.reset();
-            loadSizes();
+            isEditMode = false;
+            sizeIdToEdit = null;
+            
+            const formContainer = form.closest('.card');
+            if (formContainer) {
+                formContainer.classList.add('hidden');
+                formContainer.querySelector('h3').textContent = 'Añadir Nueva Talla';
+            }
+            submitBtn.textContent = isEditMode ? 'Actualizar Talla' : 'Añadir Talla';
+
+            loadSizes(); // Reload the list
         } catch (error) {
             showToast(`Error: ${error.message}`, 'error');
         } finally {
-            submitButton.disabled = false;
+            submitBtn.disabled = false;
         }
     });
 }
 
+/**
+ * Inicializa el módulo de gestión de tallas.
+ */
 export async function init() {
     supabase = await getSupabaseClient();
-    loadSizes();
-    handleAddSizeForm();
-}
+    if (!document.getElementById('sizes-list-container')) return;
 
-// document.addEventListener('DOMContentLoaded', init); // Lo llamará admin.js
+    loadSizes();
+    handleSizeFormSubmit();
+}

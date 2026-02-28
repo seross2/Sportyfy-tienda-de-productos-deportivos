@@ -1,64 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administrador</title>
+    <title>Añadir/Editar Producto - Admin</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
-
 <body>
     <header>
         <div class="container">
-            <h1><a href="/" class="logo">Sportify Store</a></h1>
-            <nav>
-                <!-- Menú para usuarios normales y visitantes -->
-                <ul id="store-nav" style="display: none;">
-                    <li><a href="/">Tienda</a></li>
-                </ul>
-                <!-- Menú para autenticación y perfil -->
-                <ul id="user-nav">
-                    <li id="nav-user" class="dropdown" style="display: none;">
-                        <a href="#" id="nav-user-link">Admin</a>
-                        <ul class="dropdown-menu">
-                            <li><a href="/profile.html">Mi Perfil</a></li>
-                            <li id="nav-logout"><a href="#" id="logout-button">Cerrar Sesión</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </nav>
+            <h1><a href="/admin.html" class="logo">Panel de Admin</a></h1>
+            <nav></nav>
         </div>
     </header>
     <main>
-        <section id="admin-panel" class="container">
-            <h2>Panel de Administrador</h2>
-            <form id="add-product-form">
-                <h3>Añadir Nuevo Producto</h3>
-                <input type="text" name="nombre" placeholder="Nombre del producto" required>
-                <textarea name="descripcion" placeholder="Descripción del producto"></textarea>
-                <input type="number" name="precio" placeholder="Precio (en COP, ej: 500.00)" step="0.01" required>
-                <input type="text" name="imagen_url" placeholder="URL de la imagen" required>
-                <input type="number" name="stock" placeholder="Stock disponible" required>
-                <select name="id_categoria" required>
-                    <option value="">Cargando categorías...</option>
-                </select>
-                <select name="id_marca" required>
-                    <option value="">Cargando marcas...</option>
-                </select>
-                <select name="id_talla" required>
-                    <option value="">Cargando tallas...</option>
-                </select>
-                <button type="submit">Añadir Producto</button>
-            </form>
-        </section>
+        <div class="container">
+            <div class="card" style="max-width: 800px; margin: 2rem auto;">
+                <h2>Añadir Nuevo Producto</h2>
+                <form id="add-product-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nombre">Nombre del Producto</label>
+                            <input type="text" name="nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="precio">Precio</label>
+                            <input type="number" name="precio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_categoria">Categoría (para filtrar tallas)</label>
+                            <select name="id_categoria" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_marca">Marca</label>
+                            <select name="id_marca"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="variations-section" style="background: #2a2a2a; margin: 1.5rem 0; padding: 1.5rem; border-radius: 8px; border: 1px solid #444;">
+                        <h4 style="margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem;">Gestionar Variaciones</h4>
+                        
+                        <!-- Tabla de variaciones existentes -->
+                        <div class="table-container" style="margin-bottom: 1rem;">
+                            <table class="admin-table" id="variations-table">
+                                <thead>
+                                    <tr>
+                                        <th>Talla</th>
+                                        <th>Stock</th>
+                                        <th style="width: 50px;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variations-list">
+                                    <!-- Las filas se inyectan aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Controles compactos para añadir -->
+                        <div style="display: flex; gap: 1rem; align-items: flex-end; background: #222; padding: 1rem; border-radius: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.85rem; margin-bottom: 0.3rem; display: block;">Talla</label>
+                                <select id="variation-size-select" style="width: 100%; padding: 0.5rem;"><option>Selecciona categoría...</option></select>
+                            </div>
+                            <div style="width: 100px;">
+                                <label style="font-size: 0.85rem; margin-bottom: 0.3rem; display: block;">Stock</label>
+                                <input type="number" id="variation-stock-input" placeholder="0" style="width: 100%; padding: 0.5rem;">
+                            </div>
+                            <button type="button" id="add-variation-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">+ Añadir</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label for="imagen_url">URL de la Imagen</label><input type="url" name="imagen_url" required></div>
+                    <div class="form-group"><label for="descripcion">Descripción</label><textarea name="descripcion" rows="3"></textarea></div>
+                    <button type="submit" class="btn btn-primary">Añadir Producto</button>
+                </form>
+            </div>
+        </div>
     </main>
-
     <div id="toast-message"></div>
-
-    <!-- Cargar los scripts necesarios para la página de admin -->
-    <script type="module" src="/js/auth.js"></script>
     <script type="module" src="/js/add-product.js"></script>
 </body>
-
 </html>

@@ -81,7 +81,7 @@ async function loadProducts() {
                         <td>${product.nombre}</td>
                         <td>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(product.precio)}</td>
                         <td>${product.stock}</td>
-                        <td>${product.categorias?.nombre || 'N/A'}</td>
+                        <td>${product.category_name || 'N/A'}</td>
                         <td>${product.marcas?.nombre || 'N/A'}</td>
                         <td>
                             <button class="btn btn-edit" data-id="${product.id_producto}">Editar</button>

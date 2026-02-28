@@ -4,6 +4,7 @@ import { showToast } from '/js/utils.js';
 let supabase;
 let isEditMode = false;
 let productIdToEdit = null;
+let productVariations = []; // Array para almacenar temporalmente las variaciones {id_talla, stock, nombreTalla}
 
 /**
  * Verifica si el usuario actual es un administrador.
@@ -40,8 +41,14 @@ async function checkAdminStatus() {
 async function populateFormSelects() {
     const categorySelect = document.querySelector('select[name="id_categoria"]');
     const brandSelect = document.querySelector('select[name="id_marca"]');
-    const tallaSelect = document.querySelector('select[name="id_talla"]');
-
+    // El select de talla ahora está dentro de la sección de variaciones, no es global
+    const variationSizeSelect = document.getElementById('variation-size-select');
+    
+    if (variationSizeSelect) {
+        variationSizeSelect.disabled = true;
+        variationSizeSelect.innerHTML = '<option value="">Selecciona una categoría arriba</option>';
+    }
+    
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -56,27 +63,53 @@ async function populateFormSelects() {
             }
         };
 
-        const [catRes, brandRes, tallaRes] = await Promise.all([
+        const [catRes, brandRes] = await Promise.all([
             fetch('/api/categorias', fetchOptions),
-            fetch('/api/marcas', fetchOptions),
-            fetch('/api/tallas', fetchOptions)
+            fetch('/api/marcas', fetchOptions)
         ]);
 
         const categories = await catRes.json();
         const brands = await brandRes.json();
-        const tallas = await tallaRes.json();
 
         if (categorySelect) {
             categorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
             categories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`);
+
+            // Añadir listener para cargar tallas cuando cambia la categoría
+            categorySelect.addEventListener('change', async (e) => {
+                const categoryId = e.target.value;
+                if (variationSizeSelect) {
+                    variationSizeSelect.disabled = true;
+                    variationSizeSelect.innerHTML = '<option value="">Cargando tallas...</option>';
+                }
+
+                if (!categoryId) {
+                    if (variationSizeSelect) variationSizeSelect.innerHTML = '<option value="">Selecciona una categoría arriba</option>';
+                    return;
+                }
+
+                try {
+                    const tallasRes = await fetch(`/api/tallas?id_categoria=${categoryId}`, fetchOptions);
+                    const tallas = await tallasRes.json();
+                    
+                    if (variationSizeSelect) {
+                        variationSizeSelect.innerHTML = '<option value="">Selecciona una talla</option>';
+                        if (tallas.length > 0) {
+                            tallas.forEach(talla => variationSizeSelect.innerHTML += `<option value="${talla.id_talla}">${talla.valor}</option>`);
+                            variationSizeSelect.disabled = false;
+                        } else {
+                            variationSizeSelect.innerHTML = '<option value="">No hay tallas para esta categoría</option>';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al cargar tallas:', error);
+                    if (variationSizeSelect) variationSizeSelect.innerHTML = '<option value="">Error al cargar tallas</option>';
+                }
+            });
         }
         if (brandSelect) {
             brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
             brands.forEach(brand => brandSelect.innerHTML += `<option value="${brand.id_marca}">${brand.nombre}</option>`);
-        }
-        if (tallaSelect) {
-            tallaSelect.innerHTML = '<option value="">Selecciona una talla</option>';
-            tallas.forEach(talla => tallaSelect.innerHTML += `<option value="${talla.id_talla}">${talla.tipo} - ${talla.valor}</option>`);
         }
 
     } catch (error) {
@@ -90,6 +123,7 @@ async function populateFormSelects() {
  */
 async function loadProductData(id) {
     try {
+        // La consulta debe traer la información anidada de tallas y categorías
         const response = await fetch(`/api/products/${id}`);
         if (!response.ok) throw new Error('No se pudo cargar el producto');
         const product = await response.json();
@@ -101,17 +135,37 @@ async function loadProductData(id) {
         }
         
         const form = document.getElementById('add-product-form');
+        const categorySelect = form.querySelector('[name="id_categoria"]');
+        const variationSizeSelect = document.getElementById('variation-size-select');
+
         if (form) {
             form.querySelector('[name="nombre"]').value = product.nombre;
             form.querySelector('[name="precio"]').value = product.precio;
-            form.querySelector('[name="stock"]').value = product.stock;
             form.querySelector('[name="imagen_url"]').value = product.imagen_url;
             form.querySelector('[name="descripcion"]').value = product.descripcion || '';
             
-            // Asignar valores a los selects (asegurándose de que coincidan con los IDs)
-            if (product.id_categoria) form.querySelector('[name="id_categoria"]').value = product.id_categoria;
+            // Asignar marca
             if (product.id_marca) form.querySelector('[name="id_marca"]').value = product.id_marca;
-            if (product.id_talla) form.querySelector('[name="id_talla"]').value = product.id_talla;
+
+            // Cargar variaciones existentes
+            if (product.producto_variaciones && product.producto_variaciones.length > 0) {
+                // Determinar categoría basada en la primera variación
+                const firstVar = product.producto_variaciones[0];
+                if (firstVar.tallas && firstVar.tallas.categorias) {
+                    categorySelect.value = firstVar.tallas.categorias.id_categoria;
+                    
+                    // Disparar evento change manualmente para cargar las tallas en el select
+                    categorySelect.dispatchEvent(new Event('change'));
+                }
+
+                // Llenar array de variaciones
+                productVariations = product.producto_variaciones.map(v => ({
+                    id_talla: v.tallas.id_talla,
+                    stock: v.stock,
+                    nombreTalla: v.tallas.valor
+                }));
+                renderVariationsList();
+            }
 
             const submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.textContent = 'Guardar Cambios';
@@ -120,6 +174,74 @@ async function loadProductData(id) {
         console.error(error);
         showToast('Error al cargar los datos del producto.', 'error');
     }
+}
+
+/**
+ * Renderiza la lista visual de variaciones añadidas.
+ */
+function renderVariationsList() {
+    const container = document.getElementById('variations-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    if (productVariations.length === 0) {
+        container.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #888; padding: 1rem;">No hay variaciones añadidas.</td></tr>';
+        return;
+    }
+
+    productVariations.forEach((v, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${v.nombreTalla}</strong></td>
+            <td>${v.stock}</td>
+            <td><button type="button" class="btn btn-sm btn-delete-var" data-index="${index}" style="background: transparent; color: #dc3545; border: 1px solid #dc3545; padding: 0.2rem 0.5rem; cursor: pointer;">Eliminar</button></td>
+        `;
+        container.appendChild(tr);
+    });
+
+    // Listeners para eliminar
+    container.querySelectorAll('.btn-delete-var').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            productVariations.splice(idx, 1);
+            renderVariationsList();
+        });
+    });
+}
+
+/**
+ * Configura el botón para añadir una variación a la lista temporal.
+ */
+function setupAddVariationButton() {
+    const addVarBtn = document.getElementById('add-variation-btn');
+    if (!addVarBtn) return;
+
+    addVarBtn.addEventListener('click', () => {
+        const sizeSelect = document.getElementById('variation-size-select');
+        const stockInput = document.getElementById('variation-stock-input');
+
+        if (!sizeSelect.value || !stockInput.value) {
+            showToast('Selecciona una talla e ingresa el stock.', 'error');
+            return;
+        }
+
+        const id_talla = parseInt(sizeSelect.value);
+        const stock = parseInt(stockInput.value);
+        const nombreTalla = sizeSelect.options[sizeSelect.selectedIndex].text;
+
+        // Verificar si ya existe
+        const exists = productVariations.find(v => v.id_talla === id_talla);
+        if (exists) {
+            exists.stock = stock; // Actualizar stock si ya existe
+            showToast('Stock actualizado para esta talla.', 'success');
+        } else {
+            productVariations.push({ id_talla, stock, nombreTalla });
+        }
+
+        renderVariationsList();
+        stockInput.value = ''; // Limpiar input de stock
+    });
 }
 
 /**
@@ -141,10 +263,16 @@ function handleFormSubmit() {
 
         // Convertir a números y manejar valores nulos
         productData.precio = Number(productData.precio) || 0;
-        productData.stock = Number(productData.stock) || 0;
-        productData.id_categoria = Number(productData.id_categoria) || null;
+        delete productData.id_categoria; // Eliminar la categoría del objeto, ya no se guarda en productos
         productData.id_marca = Number(productData.id_marca) || null;
-        productData.id_talla = Number(productData.id_talla) || null;
+        productData.variaciones = productVariations; // Añadir el array de variaciones
+
+        if (productVariations.length === 0) {
+            showToast('Error: Debes añadir al menos una variación (talla y stock).', 'error');
+            submitButton.disabled = false;
+            submitButton.textContent = isEditMode ? 'Guardar Cambios' : 'Añadir Producto';
+            return;
+        }
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -167,6 +295,8 @@ function handleFormSubmit() {
             
             if (!isEditMode) {
                 form.reset(); // Limpiar el formulario solo si estamos añadiendo
+                productVariations = [];
+                renderVariationsList();
             } else {
                 // Redirigir al admin después de editar para ver los cambios
                 setTimeout(() => window.location.href = '/admin.html', 1500);
@@ -204,6 +334,7 @@ async function initAddProductPage() {
             await loadProductData(editId);
         }
 
+        setupAddVariationButton();
         handleFormSubmit(); // Y preparar el formulario para ser enviado
     }
 }

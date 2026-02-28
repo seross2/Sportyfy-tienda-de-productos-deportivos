@@ -80,47 +80,7 @@ function renderAdminLayout() {
                 <section id="products-section" class="admin-section">
                     <div class="admin-section-header">
                         <h2>Gestionar Productos</h2>
-                        <button id="toggle-add-product-form" class="btn btn-primary">Añadir Nuevo Producto</button>
-                    </div>
-                    <div id="add-product-container" class="card hidden">
-                        <h3>Añadir Nuevo Producto</h3>
-                        <form id="add-product-form">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="nombre">Nombre del Producto</label>
-                                    <input type="text" name="nombre" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="precio">Precio (en centavos, ej: 50000 para $500)</label>
-                                    <input type="number" name="precio" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="stock">Stock</label>
-                                    <input type="number" name="stock" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="id_categoria">Categoría</label>
-                                    <select name="id_categoria"></select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="id_marca">Marca</label>
-                                    <select name="id_marca"></select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="id_talla">Talla</label>
-                                    <select name="id_talla"></select>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="imagen_url">URL de la Imagen</label>
-                                <input type="url" name="imagen_url" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="descripcion">Descripción</label>
-                                <textarea name="descripcion" rows="3"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Añadir Producto</button>
-                        </form>
+                        <a href="/add-product.html" class="btn btn-primary">Añadir Nuevo Producto</a>
                     </div>
                     <div class="table-container card">
                         <h3>Productos Existentes</h3>
@@ -190,11 +150,11 @@ function renderAdminLayout() {
                         <h3>Añadir Nueva Talla</h3>
                         <form id="add-size-form" class="form-inline">
                             <div class="form-group">
-                                <label for="size-type">Tipo (ej: Calzado, Ropa)</label>
-                                <input type="text" id="size-type" name="tipo" required>
+                                <label for="size-category">Categoría</label>
+                                <select id="size-category" name="id_categoria" required></select>
                             </div>
                             <div class="form-group">
-                                <label for="size-value">Valor (ej: 42, M, L)</label>
+                                <label for="size-value">Valor de la Talla (ej: 42, M, L)</label>
                                 <input type="text" id="size-value" name="valor" required>
                             </div>
                             <button type="submit" class="btn btn-primary">Añadir Talla</button>
@@ -253,8 +213,7 @@ function addAdminNavListeners() {
  * Configura los listeners para los botones que muestran/ocultan los formularios de "Añadir".
  */
 function setupFormToggles() {
-    const toggles = [
-        { btnId: 'toggle-add-product-form', containerId: 'add-product-container', text: 'Producto' },
+    const toggles = [        
         { btnId: 'toggle-add-category-form', containerId: 'add-category-container', text: 'Categoría' },
         { btnId: 'toggle-add-brand-form', containerId: 'add-brand-container', text: 'Marca' },
         { btnId: 'toggle-add-size-form', containerId: 'add-size-container', text: 'Talla' }
@@ -267,10 +226,40 @@ function setupFormToggles() {
             toggleBtn.addEventListener('click', () => {
                 formContainer.classList.toggle('hidden');
                 const isVisible = !formContainer.classList.contains('hidden');
-                toggleBtn.textContent = isVisible ? `Añadir Nuev${text === 'Producto' ? 'o' : 'a'} ${text}` : 'Ocultar Formulario';
+                toggleBtn.textContent = isVisible ? 'Ocultar Formulario' : `Añadir Nuev${text === 'Producto' ? 'o' : 'a'} ${text}`;
             });
         }
     });
+}
+
+/**
+ * Popula el <select> de categorías en el formulario de añadir tallas.
+ */
+async function populateSizeFormCategorySelect() {
+    const categorySelect = document.getElementById('size-category');
+    if (!categorySelect) return;
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No hay sesión activa.');
+
+        const fetchOptions = {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        };
+
+        const response = await fetch('/api/categorias', fetchOptions);
+        if (!response.ok) throw new Error('No se pudieron cargar las categorías.');
+        const categories = await response.json();
+
+        categorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
+        categories.forEach(cat => {
+            categorySelect.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`;
+        });
+
+    } catch (error) {
+        console.error("Error al cargar categorías para el formulario de tallas:", error);
+        categorySelect.innerHTML = '<option value="">Error al cargar categorías</option>';
+    }
 }
 
 /**
@@ -279,7 +268,6 @@ function setupFormToggles() {
 async function populateFormSelects() {
     const categorySelect = document.querySelector('select[name="id_categoria"]');
     const brandSelect = document.querySelector('select[name="id_marca"]');
-    const tallaSelect = document.querySelector('select[name="id_talla"]');
 
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -296,11 +284,10 @@ async function populateFormSelects() {
         const [catRes, brandRes, tallaRes] = await Promise.all([
             fetch('/api/categorias', fetchOptions),
             fetch('/api/marcas', fetchOptions),
-            fetch('/api/tallas', fetchOptions)
+            // fetch('/api/tallas', fetchOptions) // Ya no cargamos tallas globalmente aquí
         ]);
         const categories = await catRes.json();
         const brands = await brandRes.json();
-        const tallas = await tallaRes.json();
 
         if (categorySelect) {
             categorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
@@ -310,63 +297,10 @@ async function populateFormSelects() {
             brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
             brands.forEach(brand => brandSelect.innerHTML += `<option value="${brand.id_marca}">${brand.nombre}</option>`);
         }
-        if (tallaSelect) {
-            tallaSelect.innerHTML = '<option value="">Selecciona una talla</option>';
-            // Mostramos las tallas combinando el tipo y el valor (ej. "Calzado - 42")
-            tallas.forEach(talla => tallaSelect.innerHTML += `<option value="${talla.id_talla}">${talla.tipo} - ${talla.valor}</option>`);
-        }
 
     } catch (error) {
         console.error("Error al cargar selectores del formulario:", error);
     }
-}
-
-/**
- * Maneja el envío del formulario para añadir un nuevo producto.
- */
-function handleAddProductForm() {
-    const form = document.getElementById('add-product-form');
-    if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Añadiendo...';
-
-        const formData = new FormData(form);
-        const productData = Object.fromEntries(formData.entries());
-
-        productData.precio = Number(productData.precio) || 0;
-        productData.stock = Number(productData.stock) || 0;
-        productData.id_categoria = Number(productData.id_categoria) || null;
-        productData.id_marca = Number(productData.id_marca) || null;
-        productData.id_talla = Number(productData.id_talla) || null;
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch('/api/products', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify(productData)
-            });
-
-            if (!response.ok) throw new Error((await response.json()).error || 'Error en el servidor');
-
-            showToast('Producto añadido con éxito', 'success');
-            form.reset();
-            loadDashboardData(); // Recargar datos del dashboard para ver el nuevo total
-            document.dispatchEvent(new CustomEvent('productAdded')); // Disparar evento para recargar la tabla de productos
-        } catch (error) {
-            showToast(`Error: ${error.message}`, 'error');
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Añadir Producto';
-        }
-    });
 }
 
 /**
@@ -393,8 +327,7 @@ async function initAdminPage() {
     // Si es admin, renderizar el layout y cargar todo lo demás.
     renderAdminLayout();
     loadDashboardData();
-    populateFormSelects();
-    handleAddProductForm();
+    populateSizeFormCategorySelect();
 
     // Escuchar evento para recargar el contador de productos del dashboard
     document.addEventListener('productDeleted', loadDashboardData);

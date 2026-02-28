@@ -24,7 +24,8 @@ class ProductApp {
     }
 
     async init() {
-        this.setupFilterListeners();
+        this.injectModalHTML();
+        this.setupEventListeners();
 
         if (this.searchInput) this.searchInput.addEventListener('input', () => this.applyFilters());
         if (this.categoryFilter) this.categoryFilter.addEventListener('change', () => this.applyFilters());
@@ -51,17 +52,15 @@ class ProductApp {
 
     }
 
-    setupFilterListeners() {
+    setupEventListeners() {
         this.productGrid.addEventListener('click', (event) => {
-            if (event.target.matches('.add-to-cart-btn')) {
+            if (event.target.matches('.add-to-cart-modal-btn')) {
                 const productId = event.target.dataset.productId;
-                const productToAdd = this.allProducts.find(p => p.id_producto === Number(productId));
-                if (productToAdd) {
-                    shoppingCart.addProduct(productToAdd);
-                    showToast(`"${productToAdd.nombre}" ha sido añadido al carrito.`);
-                }
+                this.openAddToCartModal(productId);
             }
         });
+
+        this.setupModalListeners();
     }
 
     async fetchProducts(page = 1) {
@@ -122,7 +121,7 @@ class ProductApp {
                 </div>
                 <div class="card-buttons">
                     <a href="/product.html?id=${product.id_producto}" class="btn btn-secondary">Ver más</a>
-                    <button class="btn btn-primary add-to-cart-btn" data-product-id="${product.id_producto}">Añadir</button>
+                    <button class="btn btn-primary add-to-cart-modal-btn" data-product-id="${product.id_producto}">Agregar al Carrito</button>
                 </div>
             `;
             this.productGrid.appendChild(productCard);
@@ -203,6 +202,142 @@ class ProductApp {
 
     applyFilters() {
         this.fetchProducts(1);
+    }
+
+    injectModalHTML() {
+        const modalHTML = `
+            <div class="modal" id="add-to-cart-modal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Añadir al Carrito</h3>
+                            <button type="button" class="btn-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- El contenido se inyectará dinámicamente -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-close">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="confirm-add-to-cart-btn">Listo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    setupModalListeners() {
+        const modal = document.getElementById('add-to-cart-modal');
+        if (!modal) return;
+
+        const closeButtons = modal.querySelectorAll('.btn-close');
+        closeButtons.forEach(btn => btn.addEventListener('click', () => this.closeModal()));
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeModal();
+            }
+        });
+
+        const confirmBtn = document.getElementById('confirm-add-to-cart-btn');
+        confirmBtn.addEventListener('click', () => {
+            const product = JSON.parse(modal.dataset.product);
+            const variationItems = modal.querySelectorAll('.variation-selection-item');
+            let itemsAddedCount = 0;
+            let hasError = false;
+
+            variationItems.forEach(item => {
+                const quantityInput = item.querySelector('.variation-quantity');
+                const quantity = parseInt(quantityInput.value, 10);
+
+                if (quantity > 0) {
+                    const id_variacion = parseInt(item.dataset.idVariacion, 10);
+                    const variation = product.producto_variaciones.find(v => v.id_variacion === id_variacion);
+                    
+                    if (variation) {
+                        // VALIDACIÓN 1: Que la cantidad no supere el stock individualmente
+                        if (quantity > variation.stock) {
+                            showToast(`Solo hay ${variation.stock} unidades disponibles de la talla ${variation.tallas.valor}.`, 'error');
+                            hasError = true;
+                            return;
+                        }
+
+                        // VALIDACIÓN 2: Que la suma (carrito + nuevo) no supere el stock
+                        const currentCart = shoppingCart.getCart();
+                        const existingItem = currentCart.find(i => i.id_variacion === id_variacion);
+                        const currentQty = existingItem ? existingItem.quantity : 0;
+
+                        if (currentQty + quantity > variation.stock) {
+                            showToast(`No puedes añadir ${quantity} más. Ya tienes ${currentQty} en el carrito y el stock total es ${variation.stock}.`, 'error');
+                            hasError = true;
+                            return;
+                        }
+
+                        const productForCart = {
+                            id_variacion: variation.id_variacion,
+                            nombre: `${product.nombre} (Talla: ${variation.tallas.valor})`,
+                            precio: product.precio,
+                            imagen_url: product.imagen_url,
+                            stock: variation.stock,
+                        };
+                        shoppingCart.addProduct(productForCart, quantity);
+                        itemsAddedCount++;
+                    }
+                }
+            });
+
+            if (itemsAddedCount > 0) {
+                showToast(`${itemsAddedCount} ${itemsAddedCount > 1 ? 'tipos de artículos' : 'artículo'} añadido(s) al carrito.`, 'success');
+            }
+            
+            // Solo cerramos si se añadió algo o si no hubo errores (ej. usuario cancela poniendo todo a 0)
+            if (itemsAddedCount > 0 || !hasError) this.closeModal();
+        });
+    }
+
+    async openAddToCartModal(productId) {
+        const modal = document.getElementById('add-to-cart-modal');
+        const modalBody = modal.querySelector('.modal-body');
+        modalBody.innerHTML = '<p>Cargando detalles...</p>';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+
+        const response = await fetch(`/api/products/${productId}`);
+        if (!response.ok) {
+            showToast('No se pudo cargar la información del producto.', 'error');
+            this.closeModal();
+            return;
+        }
+        const product = await response.json();
+        modal.dataset.product = JSON.stringify(product);
+
+        modal.querySelector('.modal-title').textContent = product.nombre;
+        
+        let variationsHTML = `<p class="price">${shoppingCart.formatPrice(product.precio)}</p><h4>Selecciona Talla y Cantidad:</h4>`;
+        if (product.producto_variaciones && product.producto_variaciones.length > 0) {
+            variationsHTML += '<div class="variation-selection-list">';
+            product.producto_variaciones.forEach(v => {
+                variationsHTML += `
+                    <div class="variation-selection-item" data-id-variacion="${v.id_variacion}" data-stock="${v.stock}">
+                        <label>Talla: <strong>${v.tallas.valor}</strong> (Disponibles: ${v.stock})</label>
+                        <input type="number" class="variation-quantity" min="0" max="${v.stock}" value="0" placeholder="0" ${v.stock === 0 ? 'disabled' : ''} oninput="if(parseInt(this.value) > ${v.stock}) this.value = ${v.stock};">
+                    </div>
+                `;
+            });
+            variationsHTML += '</div>';
+        } else {
+            variationsHTML += '<p>Este producto no tiene tallas disponibles en este momento.</p>';
+        }
+        modalBody.innerHTML = variationsHTML;
+    }
+
+    closeModal() {
+        const modal = document.getElementById('add-to-cart-modal');
+        if (modal) {
+            modal.classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
     }
 }
 

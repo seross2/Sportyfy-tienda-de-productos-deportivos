@@ -26,20 +26,22 @@ class ShoppingCart {
     /**
      * Añade un producto al carrito o incrementa su cantidad si ya existe.
      * @param {object} product El objeto del producto a añadir.
+     * @param {number} quantity La cantidad a añadir (por defecto 1).
      */
-    addProduct(product) {
+    addProduct(product, quantity = 1) {
         const cart = this.getCart();
-        const existingProductIndex = cart.findIndex(item => item.id_producto === product.id_producto);
+        // CAMBIO: Usamos id_variacion como identificador único
+        const existingProductIndex = cart.findIndex(item => item.id_variacion === product.id_variacion);
 
         if (existingProductIndex !== -1) {
-            cart[existingProductIndex].quantity += 1;
+            cart[existingProductIndex].quantity += quantity;
         } else {
             const cartItem = {
-                id_producto: product.id_producto,
+                id_variacion: product.id_variacion,
                 nombre: product.nombre,
                 precio: product.precio,
                 imagen_url: product.imagen_url,
-                quantity: 1
+                quantity: quantity
             };
             cart.push(cartItem);
         }
@@ -48,14 +50,23 @@ class ShoppingCart {
 
     /**
      * Actualiza la cantidad de un producto en el carrito.
-     * @param {string} productId El ID del producto a actualizar.
+     * @param {string} variationId El ID de la variación a actualizar.
      * @param {number} change El cambio en la cantidad (+1, -1, etc.).
      */
-    updateQuantity(productId, change) {
+    updateQuantity(variationId, change) {
         let cart = this.getCart();
-        const productIndex = cart.findIndex(item => Number(item.id_producto) === Number(productId));
+        const productIndex = cart.findIndex(item => Number(item.id_variacion) === Number(variationId));
 
         if (productIndex !== -1) {
+            // Validar stock antes de incrementar
+            if (change > 0) {
+                const item = cart[productIndex];
+                if (item.stock !== undefined && item.quantity + change > item.stock) {
+                    showToast(`No puedes añadir más. Stock máximo: ${item.stock}`, 'error');
+                    return;
+                }
+            }
+
             cart[productIndex].quantity += change;
             if (cart[productIndex].quantity <= 0) {
                 // Eliminar el producto si la cantidad es 0 o menos.
@@ -67,11 +78,11 @@ class ShoppingCart {
 
     /**
      * Elimina un producto del carrito por completo.
-     * @param {string} productId El ID del producto a eliminar.
+     * @param {string} variationId El ID de la variación a eliminar.
      */
-    removeProduct(productId) {
+    removeProduct(variationId) {
         let cart = this.getCart();
-        cart = cart.filter(item => Number(item.id_producto) !== Number(productId));
+        cart = cart.filter(item => Number(item.id_variacion) !== Number(variationId));
         this.saveCart(cart);
     }
 
@@ -142,14 +153,14 @@ class ShoppingCart {
                     <h4>${item.nombre}</h4>
                     <p>Precio: ${this.formatPrice(item.precio)}</p>
                     <div class="quantity-controls">
-                        <button class="quantity-btn" data-id="${item.id_producto}" data-change="-1">-</button>
+                        <button class="quantity-btn" data-id="${item.id_variacion}" data-change="-1">-</button>
                         <span>${item.quantity}</span>
-                        <button class="quantity-btn" data-id="${item.id_producto}" data-change="1">+</button>
+                        <button class="quantity-btn" data-id="${item.id_variacion}" data-change="1">+</button>
                     </div>
                 </div>
                 <div class="cart-item-total">
                     <p>${this.formatPrice(itemTotal)}</p>
-                    <button class="remove-btn" data-id="${item.id_producto}">Eliminar</button>
+                    <button class="remove-btn" data-id="${item.id_variacion}">Eliminar</button>
                 </div>
             `;
             cartContainer.appendChild(cartItemElement);
@@ -173,14 +184,14 @@ class ShoppingCart {
             const target = e.target.closest('button');
             if (!target) return;
 
-            const productId = target.dataset.id;
+            const variationId = target.dataset.id;
 
             if (target.matches('.quantity-btn')) {
                 const change = parseInt(target.dataset.change, 10);
-                this.updateQuantity(productId, change);
+                this.updateQuantity(variationId, change);
                 this.renderPage();
             } else if (target.matches('.remove-btn')) {
-                this.removeProduct(productId);
+                this.removeProduct(variationId);
                 showToast('Producto eliminado del carrito.', 'success');
                 this.renderPage();
             }

@@ -115,32 +115,46 @@ class Server {
                 const from = (page - 1) * limit;
                 const to = from + limit - 1;
 
-                let query = this.supabase
-                    .from('productos')
-                    .select('*, categorias(nombre), marcas(nombre), tallas(tipo, valor), reseñas(puntuacion)', { count: 'exact' });
-
                 const { search, id_categoria, id_marca, max_precio } = req.query;
 
+                // CAMBIO: Ahora consultamos producto_variaciones para obtener stock y tallas
+                let selectStatement = '*, marcas(nombre), producto_variaciones(stock, tallas(valor, categorias(nombre))), reseñas(puntuacion)';
+                
+                // Si se filtra por categoría, se necesita un inner join para asegurar que el producto pertenezca a ella.
+                if (id_categoria) {
+                    selectStatement = '*, marcas(nombre), producto_variaciones!inner(stock, tallas(valor, categorias!inner(nombre))), reseñas(puntuacion)';
+                }
+
+                let query = this.supabase.from('productos').select(selectStatement, { count: 'exact' });
+
                 if (search) query = query.ilike('nombre', `%${search}%`);
-                if (id_categoria) query = query.eq('id_categoria', id_categoria);
+                if (id_categoria) query = query.eq('producto_variaciones.tallas.categorias.id_categoria', id_categoria);
                 if (id_marca) query = query.eq('id_marca', id_marca);
                 if (max_precio) query = query.lte('precio', parseInt(max_precio));
 
                 // Aplicar paginación
                 query = query.range(from, to);
-
                 const { data, error, count } = await query;
                 if (error) throw error;
 
                 const productsWithAvgRating = data.map(product => {
                     const reviews = product.reseñas || [];
+                    const variaciones = product.producto_variaciones || [];
+                    
+                    // Calcular stock total sumando todas las variantes
+                    const totalStock = variaciones.reduce((sum, v) => sum + v.stock, 0);
+                    
+                    // Obtener nombre de categoría de la primera variación encontrada (si existe)
+                    const categoriaNombre = variaciones.length > 0 && variaciones[0].tallas && variaciones[0].tallas.categorias 
+                        ? variaciones[0].tallas.categorias.nombre 
+                        : 'Sin Categoría';
+
                     let average_rating = 0;
                     if (reviews.length > 0) {
                         const totalScore = reviews.reduce((acc, review) => acc + review.puntuacion, 0);
                         average_rating = totalScore / reviews.length;
                     }
-                    const { reseñas, ...productData } = product;
-                    return { ...productData, average_rating };
+                    return { ...product, stock: totalStock, category_name: categoriaNombre, average_rating };
                 });
 
                 res.json({ products: productsWithAvgRating, totalCount: count });
@@ -154,7 +168,7 @@ class Server {
             try {
                 const { data, error } = await this.supabase
                     .from('productos')
-                    .select('*, categorias(nombre), marcas(nombre), tallas(tipo, valor)')
+                    .select('*, marcas(nombre), producto_variaciones(id_variacion, stock, tallas(id_talla, valor, categorias(nombre)))')
                     .eq('id_producto', id)
                     .single();
 
@@ -189,7 +203,13 @@ class Server {
 
         this.app.get('/api/tallas', async (req, res) => {
             try {
-                const { data, error } = await this.supabase.from('tallas').select('*');
+                let query = this.supabase.from('tallas').select('*, categorias(nombre)');
+                const { id_categoria } = req.query;
+
+                if (id_categoria) {
+                    query = query.eq('id_categoria', id_categoria);
+                }
+                const { data, error } = await query;
                 if (error) throw error;
                 res.json(data);
             } catch (error) {
@@ -200,16 +220,30 @@ class Server {
         // Admin Routes
         this.app.post('/api/products', auth, admin, async (req, res) => {
             try {
-                const { nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla } = req.body;
-                if (!nombre || !precio || !imagen_url || stock === undefined) {
-                    return res.status(400).json({ error: 'Nombre, precio, imagen y stock son requeridos.' });
+                const { nombre, descripcion, precio, imagen_url, id_marca, variaciones } = req.body;
+                
+                if (!nombre || !precio || !imagen_url) {
+                    return res.status(400).json({ error: 'Nombre, precio e imagen son requeridos.' });
                 }
+
+                // 1. Insertar el producto base
                 const { data, error } = await this.supabase
                     .from('productos')
-                    .insert([{ nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla }])
+                    .insert([{ nombre, descripcion, precio, imagen_url, id_marca }])
                     .select();
+                
                 if (error) throw error;
-                res.status(201).json(data[0]);
+                const newProduct = data[0];
+
+                // 2. Insertar las variaciones (tallas y stock)
+                if (variaciones && variaciones.length > 0) {
+                    const variacionesData = variaciones.map(v => ({ id_producto: newProduct.id_producto, id_talla: v.id_talla, stock: v.stock }));
+                    const { error: varError } = await this.supabase.from('producto_variaciones').insert(variacionesData);
+                    if (varError) throw varError;
+                }
+
+                if (error) throw error;
+                res.status(201).json(newProduct);
             } catch (error) {
                 res.status(500).json({ error: 'Error al añadir el producto', details: error.message });
             }
@@ -240,10 +274,10 @@ class Server {
         });
 
         this.app.post('/api/tallas', auth, admin, async (req, res) => {
-            const { tipo, valor } = req.body;
-            if (!tipo || !valor) return res.status(400).json({ error: 'Tipo y valor son requeridos.' });
+            const { id_categoria, valor } = req.body;
+            if (!id_categoria || !valor) return res.status(400).json({ error: 'Categoría y valor son requeridos.' });
             try {
-                const { data, error } = await this.supabase.from('tallas').insert({ tipo, valor }).select();
+                const { data, error } = await this.supabase.from('tallas').insert({ id_categoria, valor }).select();
                 if (error) throw error;
                 res.status(201).json(data[0]);
             } catch (error) {
@@ -254,18 +288,31 @@ class Server {
         this.app.put('/api/products/:id', auth, admin, async (req, res) => {
             const { id } = req.params;
             try {
-                const { nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla } = req.body;
-                if (!nombre || !precio || !imagen_url || stock === undefined) {
+                const { nombre, descripcion, precio, imagen_url, id_marca, variaciones } = req.body;
+                
+                if (!nombre || !precio || !imagen_url) {
                     return res.status(400).json({ error: 'Todos los campos principales son requeridos.' });
                 }
+
+                // 1. Actualizar producto base
                 const { data, error } = await this.supabase
                     .from('productos')
-                    .update({ nombre, descripcion, precio, imagen_url, stock, id_categoria, id_marca, id_talla })
+                    .update({ nombre, descripcion, precio, imagen_url, id_marca })
                     .eq('id_producto', id)
                     .select();
 
                 if (error) throw error;
                 if (data.length === 0) return res.status(404).json({ error: 'Producto no encontrado para actualizar.' });
+
+                // 2. Actualizar variaciones (Estrategia simple: Borrar anteriores e insertar nuevas)
+                // Nota: En producción idealmente harías un "upsert", pero esto funciona para este alcance.
+                await this.supabase.from('producto_variaciones').delete().eq('id_producto', id);
+                
+                if (variaciones && variaciones.length > 0) {
+                    const variacionesData = variaciones.map(v => ({ id_producto: id, id_talla: v.id_talla, stock: v.stock }));
+                    const { error: varError } = await this.supabase.from('producto_variaciones').insert(variacionesData);
+                    if (varError) throw varError;
+                }
 
                 res.status(200).json(data[0]);
             } catch (error) {
@@ -301,10 +348,10 @@ class Server {
 
         this.app.put('/api/tallas/:id', auth, admin, async (req, res) => {
             const { id } = req.params;
-            const { tipo, valor } = req.body;
-            if (!tipo || !valor) return res.status(400).json({ error: 'Tipo y valor son requeridos.' });
+            const { id_categoria, valor } = req.body;
+            if (!id_categoria || !valor) return res.status(400).json({ error: 'Categoría y valor son requeridos.' });
             try {
-                const { data, error } = await this.supabase.from('tallas').update({ tipo, valor }).eq('id_talla', id).select();
+                const { data, error } = await this.supabase.from('tallas').update({ id_categoria, valor }).eq('id_talla', id).select();
                 if (error) throw error;
                 res.status(200).json(data[0]);
             } catch (error) {
@@ -427,7 +474,7 @@ class Server {
 
                 const detallesPedido = items.map(item => ({
                     id_pedido: pedido.id_pedido,
-                    id_producto: item.id_producto,
+                    id_variacion: item.id_variacion, // CAMBIO: Ahora usamos id_variacion
                     cantidad: item.quantity,
                     precio_unitario: item.precio
                 }));
@@ -471,7 +518,16 @@ class Server {
             try {
                 const { data, error } = await this.supabase
                     .from('pedidos')
-                    .select('*, envios(*), pedido_detalle(*, productos(nombre, imagen_url))')
+                    .select(`
+                        *, 
+                        envios(*), 
+                        pedido_detalle(
+                            *, 
+                            producto_variaciones(
+                                productos(nombre, imagen_url)
+                            )
+                        )
+                    `)
                     .eq('id_usuario', id_usuario)
                     .order('fecha_pedido', { ascending: false });
 
