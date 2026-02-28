@@ -6,27 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verifica tu Correo - Sportify Store</title>
     <link rel="stylesheet" href="/css/styles.css">
-    <style>
-        .verification-container {
-            text-align: center;
-            padding: 4rem 2rem;
-            max-width: 600px;
-            margin: 4rem auto;
-            background-color: var(--dark-color);
-            border-radius: var(--border-radius);
-        }
-    </style>
 </head>
 
-<body>
-    <main>
-        <div class="verification-container">
-            <h1>¡Casi listo!</h1>
-            <p>Hemos enviado un enlace de verificación a tu correo electrónico.</p>
-            <p>Por favor, haz clic en el enlace para activar tu cuenta. Si no lo ves, revisa tu carpeta de spam.</p>
-            <a href="/" class="btn btn-primary" style="margin-top: 2rem;">Volver a la tienda</a>
-        </div>
-    </main>
+<body class="auth-page">
+    <h1><a href="/" class="logo">Sportify Store</a></h1>
+
+    <div class="card" style="text-align: center; max-width: 500px;">
+        <h2>¡Registro Exitoso!</h2>
+        <p>Hemos enviado un enlace de confirmación a tu correo electrónico.</p>
+        <p>Por favor, revisa tu bandeja de entrada (y la carpeta de spam) para activar tu cuenta.</p>
+        <br>
+        <button id="resend-email-btn" class="btn btn-secondary" style="margin-bottom: 1rem;">Reenviar Correo</button>
+        <br>
+        <a href="/login.html" class="btn btn-primary">Ir a Iniciar Sesión</a>
+    </div>
+
+    <div id="toast-message"></div>
+    <script type="module" src="/js/auth.js"></script>
 </body>
 
 </html>
