@@ -4,6 +4,7 @@ import { init as initProducts } from '/js/manage-products.js';
 import { init as initCategories } from '/js/manage-categories.js';
 import { init as initBrands } from '/js/manage-brands.js';
 import { init as initSizes } from '/js/manage-sizes.js';
+import { init as initOrders } from '/js/manage-orders.js';
 import '/js/global.js'; // Asegura que el menú se cargue en el panel de admin
 
 let supabase;
@@ -67,11 +68,11 @@ function renderAdminLayout() {
                         </div>
                         <div class="dashboard-card">
                             <h4>Pedidos Pendientes</h4>
-                            <p>Cargando...</p>
+                            <p id="pending-orders-count">Cargando...</p>
                         </div>
                         <div class="dashboard-card">
                             <h4>Ingresos (Mes)</h4>
-                            <p>Cargando...</p>
+                            <p id="monthly-revenue">Cargando...</p>
                         </div>
                     </div>
                 </section>
@@ -91,8 +92,8 @@ function renderAdminLayout() {
                 <!-- Orders Section -->
                 <section id="orders-section" class="admin-section">
                     <h2>Historial de Pedidos</h2>
-                    <div class="card">
-                        <p>Próximamente podrás ver y gestionar todos los pedidos de la tienda aquí.</p>
+                    <div class="table-container card">
+                        <div id="orders-list-container"></div>
                     </div>
                 </section>
 
@@ -177,19 +178,39 @@ function renderAdminLayout() {
  */
 async function loadDashboardData() {
     const totalProductsEl = document.getElementById('total-products');    
-    if (totalProductsEl) {
-        try {
-            const { data, error, count } = await supabase
-                .from('productos')
-                .select('*', { count: 'exact', head: true }); // head:true para no traer datos, solo el conteo
+    const pendingOrdersEl = document.getElementById('pending-orders-count');
+    const revenueEl = document.getElementById('monthly-revenue');
 
-            if (error) throw error; 
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
 
-            totalProductsEl.textContent = count;
-        } catch (error) {
-            console.error('Error cargando datos del dashboard:', error);
-            totalProductsEl.textContent = 'Error';
+        // Usamos el nuevo endpoint del servidor para evitar problemas de permisos (RLS)
+        const response = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (response.ok) {
+            const stats = await response.json();
+            if (totalProductsEl) totalProductsEl.textContent = stats.products;
+            if (pendingOrdersEl) pendingOrdersEl.textContent = stats.pendingOrders;
+            if (revenueEl) {
+                // Formatear como moneda (COP)
+                revenueEl.textContent = new Intl.NumberFormat('es-CO', { 
+                    style: 'currency', 
+                    currency: 'COP',
+                    minimumFractionDigits: 0
+                }).format(stats.revenue);
+            }
+        } else {
+            console.error('Error al obtener estadísticas del servidor');
+            if (totalProductsEl) totalProductsEl.textContent = '-';
+            if (pendingOrdersEl) pendingOrdersEl.textContent = '-';
+            if (revenueEl) revenueEl.textContent = '-';
         }
+
+    } catch (error) {
+        console.error('Error cargando datos del dashboard:', error);
     }
 }
 
@@ -213,20 +234,20 @@ function addAdminNavListeners() {
  * Configura los listeners para los botones que muestran/ocultan los formularios de "Añadir".
  */
 function setupFormToggles() {
-    const toggles = [        
-        { btnId: 'toggle-add-category-form', containerId: 'add-category-container', text: 'Categoría' },
-        { btnId: 'toggle-add-brand-form', containerId: 'add-brand-container', text: 'Marca' },
-        { btnId: 'toggle-add-size-form', containerId: 'add-size-container', text: 'Talla' }
+    const toggles = [
+        { btnId: 'toggle-add-category-form', containerId: 'add-category-container', addText: 'Añadir Nueva Categoría' },
+        { btnId: 'toggle-add-brand-form', containerId: 'add-brand-container', addText: 'Añadir Nueva Marca' },
+        { btnId: 'toggle-add-size-form', containerId: 'add-size-container', addText: 'Añadir Nueva Talla' }
     ];
 
-    toggles.forEach(({ btnId, containerId, text }) => {
+    toggles.forEach(({ btnId, containerId, addText }) => {
         const toggleBtn = document.getElementById(btnId);
         const formContainer = document.getElementById(containerId);
         if (toggleBtn && formContainer) {
             toggleBtn.addEventListener('click', () => {
                 formContainer.classList.toggle('hidden');
                 const isVisible = !formContainer.classList.contains('hidden');
-                toggleBtn.textContent = isVisible ? 'Ocultar Formulario' : `Añadir Nuev${text === 'Producto' ? 'o' : 'a'} ${text}`;
+                toggleBtn.textContent = isVisible ? 'Ocultar Formulario' : addText;
             });
         }
     });
@@ -337,6 +358,7 @@ async function initAdminPage() {
     initCategories();
     initBrands();
     initSizes();
+    initOrders();
 }
 
 document.addEventListener('DOMContentLoaded', initAdminPage);

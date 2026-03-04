@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '/js/supabaseClient.js';
 import { showToast } from '/js/utils.js';
+import { shoppingCart } from '/js/cart-logic.js';
 
 let supabase;
 
@@ -79,7 +80,7 @@ async function loadProducts() {
                     <tr data-id="${product.id_producto}">
                         <td>${product.id_producto}</td>
                         <td>${product.nombre}</td>
-                        <td>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(product.precio)}</td>
+                        <td>${shoppingCart.formatPrice(product.precio)}</td>
                         <td>${product.stock}</td>
                         <td>${product.category_name || 'N/A'}</td>
                         <td>${product.marcas?.nombre || 'N/A'}</td>

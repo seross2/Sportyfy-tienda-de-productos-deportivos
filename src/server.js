@@ -75,13 +75,16 @@ class Server {
 
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object;
+            // Log para depuración: Muestra la sesión recibida en la terminal del servidor
+            console.log('✅ Webhook de Stripe recibido: Checkout session completada.');
+
             const id_pedido = session.metadata.id_pedido;
 
             try {
                 await this.supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id_pedido', id_pedido);
                 await this.supabase.from('pagos').insert({
                     id_pedido: id_pedido,
-                    monto: session.amount_total,
+                    monto: session.amount_total / 100, // Stripe envía en centavos, lo guardamos en pesos
                     metodo: 'Stripe',
                     stripe_payment_id: session.payment_intent,
                     estado_pago: 'Completado'
@@ -122,7 +125,9 @@ class Server {
                 
                 // Si se filtra por categoría, se necesita un inner join para asegurar que el producto pertenezca a ella.
                 if (id_categoria) {
-                    selectStatement = '*, marcas(nombre), producto_variaciones!inner(stock, tallas(valor, categorias!inner(nombre))), reseñas(puntuacion)';
+                    // Al filtrar por categoría, es crucial hacer un "inner join" en toda la cadena de relación:
+                    // productos -> producto_variaciones -> tallas -> categorias.
+                    selectStatement = '*, marcas(nombre), producto_variaciones!inner(stock, tallas!inner(valor, categorias!inner(nombre))), reseñas(puntuacion)';
                 }
 
                 let query = this.supabase.from('productos').select(selectStatement, { count: 'exact' });
@@ -222,7 +227,7 @@ class Server {
             try {
                 const { nombre, descripcion, precio, imagen_url, id_marca, variaciones } = req.body;
                 
-                if (!nombre || !precio || !imagen_url) {
+                if (!nombre || typeof precio === 'undefined' || precio === null || !imagen_url) {
                     return res.status(400).json({ error: 'Nombre, precio e imagen son requeridos.' });
                 }
 
@@ -290,8 +295,8 @@ class Server {
             try {
                 const { nombre, descripcion, precio, imagen_url, id_marca, variaciones } = req.body;
                 
-                if (!nombre || !precio || !imagen_url) {
-                    return res.status(400).json({ error: 'Todos los campos principales son requeridos.' });
+                if (!nombre || typeof precio === 'undefined' || precio === null || !imagen_url) {
+                    return res.status(400).json({ error: 'Nombre, precio e imagen son requeridos.' });
                 }
 
                 // 1. Actualizar producto base
@@ -304,19 +309,54 @@ class Server {
                 if (error) throw error;
                 if (data.length === 0) return res.status(404).json({ error: 'Producto no encontrado para actualizar.' });
 
-                // 2. Actualizar variaciones (Estrategia simple: Borrar anteriores e insertar nuevas)
-                // Nota: En producción idealmente harías un "upsert", pero esto funciona para este alcance.
-                await this.supabase.from('producto_variaciones').delete().eq('id_producto', id);
+                // 2. Actualizar variaciones (Estrategia inteligente para preservar historial de pedidos)
+                // Obtener variaciones existentes
+                const { data: existingVars, error: fetchError } = await this.supabase
+                    .from('producto_variaciones')
+                    .select('*')
+                    .eq('id_producto', id);
                 
+                if (fetchError) throw fetchError;
+
+                const existingVarsMap = new Map(existingVars.map(v => [v.id_talla, v]));
+                const newVarsIds = new Set(variaciones ? variaciones.map(v => v.id_talla) : []);
+
+                // A. Actualizar o Insertar
                 if (variaciones && variaciones.length > 0) {
-                    const variacionesData = variaciones.map(v => ({ id_producto: id, id_talla: v.id_talla, stock: v.stock }));
-                    const { error: varError } = await this.supabase.from('producto_variaciones').insert(variacionesData);
-                    if (varError) throw varError;
+                    for (const v of variaciones) {
+                        if (existingVarsMap.has(v.id_talla)) {
+                            // Actualizar stock de la existente
+                            const existing = existingVarsMap.get(v.id_talla);
+                            const { error: updateError } = await this.supabase
+                                .from('producto_variaciones')
+                                .update({ stock: v.stock })
+                                .eq('id_variacion', existing.id_variacion);
+                            if (updateError) throw updateError;
+                        } else {
+                            // Insertar nueva
+                            const { error: insertError } = await this.supabase
+                                .from('producto_variaciones')
+                                .insert({ id_producto: id, id_talla: v.id_talla, stock: v.stock });
+                            if (insertError) throw insertError;
+                        }
+                    }
+                }
+
+                // B. Eliminar las que ya no están en la lista
+                for (const existing of existingVars) {
+                    if (!newVarsIds.has(existing.id_talla)) {
+                        // Intentar eliminar. Si falla (por FK de pedidos), ponemos stock 0
+                        const { error: delError } = await this.supabase.from('producto_variaciones').delete().eq('id_variacion', existing.id_variacion);
+                        if (delError) {
+                            await this.supabase.from('producto_variaciones').update({ stock: 0 }).eq('id_variacion', existing.id_variacion);
+                        }
+                    }
                 }
 
                 res.status(200).json(data[0]);
             } catch (error) {
                 res.status(500).json({ error: 'Error al actualizar el producto', details: error.message });
+                console.error(error); // Log para ver el error en la terminal si ocurre
             }
         });
 
@@ -453,9 +493,11 @@ class Server {
             if (!direccion_envio || !telefono_contacto) return res.status(400).json({ error: 'La dirección y el teléfono son requeridos.' });
 
             try {
+                const total = items.reduce((sum, item) => sum + (item.precio * item.quantity), 0);
+
                 const { data: pedido, error: pedidoError } = await this.supabase
                     .from('pedidos')
-                    .insert({ id_usuario, estado: 'Pendiente' })
+                    .insert({ id_usuario, estado: 'Pendiente', total })
                     .select('id_pedido')
                     .single();
 
@@ -489,17 +531,19 @@ class Server {
                             name: item.nombre,
                             images: [item.imagen_url],
                         },
-                        unit_amount: item.precio,
+                        unit_amount: Math.round(item.precio * 100), // Convertir Pesos a Centavos para Stripe
                     },
                     quantity: item.quantity,
                 }));
+
+                const baseUrl = process.env.BASE_URL || `http://localhost:${this.port}`;
 
                 const session = await this.stripe.checkout.sessions.create({
                     payment_method_types: ['card'],
                     line_items: line_items,
                     mode: 'payment',
-                    success_url: `http://localhost:${this.port}/pago-exitoso.html`,
-                    cancel_url: `http://localhost:${this.port}/pago-cancelado.html`,
+                    success_url: `${baseUrl}/pago-exitoso.html`,
+                    cancel_url: `${baseUrl}/pago-cancelado.html`,
                     metadata: {
                         id_pedido: pedido.id_pedido,
                     }
@@ -535,6 +579,99 @@ class Server {
                 res.json(data);
             } catch (error) {
                 res.status(500).json({ error: 'Error al obtener el historial de pedidos', details: error.message });
+            }
+        });
+
+        // Admin: Get All Orders
+        this.app.get('/api/admin/orders', auth, admin, async (req, res) => {
+            try {
+                // 1. Obtener pedidos y envíos (sin join a profiles para evitar errores de FK)
+                const { data: orders, error: ordersError } = await this.supabase
+                    .from('pedidos')
+                    .select('*, envios(*), pedido_detalle(cantidad, precio_unitario)')
+                    .order('fecha_pedido', { ascending: false });
+
+                if (ordersError) throw ordersError;
+
+                // 2. Obtener perfiles manualmente usando los IDs de usuario de los pedidos
+                const userIds = [...new Set(orders.map(o => o.id_usuario).filter(id => id))];
+                let profilesMap = {};
+
+                if (userIds.length > 0) {
+                    const { data: profiles } = await this.supabase
+                        .from('profiles')
+                        .select('id, email, full_name, username')
+                        .in('id', userIds);
+                    
+                    if (profiles) profiles.forEach(p => profilesMap[p.id] = p);
+                }
+
+                // 3. Combinar la información
+                const data = orders.map(order => {
+                    // Calcular total si no existe en la tabla pedidos (para arreglar los NaN antiguos)
+                    let total = order.total;
+                    if ((total === null || total === undefined) && order.pedido_detalle) {
+                        total = order.pedido_detalle.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
+                    }
+                    return {
+                        ...order,
+                        total,
+                        profiles: profilesMap[order.id_usuario] || { email: 'Usuario desconocido', username: 'Desconocido' }
+                    };
+                });
+
+                res.json(data);
+            } catch (error) {
+                console.error('Error al obtener pedidos admin:', error);
+                res.status(500).json({ error: 'Error al obtener el historial de pedidos', details: error.message });
+            }
+        });
+
+        // Admin: Get Dashboard Stats
+        this.app.get('/api/admin/stats', auth, admin, async (req, res) => {
+            try {
+                // Contar productos
+                const { count: productsCount, error: prodError } = await this.supabase
+                    .from('productos')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (prodError) throw prodError;
+
+                // Contar pedidos pendientes
+                const { count: ordersCount, error: ordError } = await this.supabase
+                    .from('pedidos')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('estado', 'Pendiente');
+
+                if (ordError) throw ordError;
+
+                // Calcular Ingresos del Mes
+                const date = new Date();
+                // Primer día del mes actual
+                const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+                
+                // CAMBIO: Usamos la tabla 'pedidos' para asegurar que coincida con lo que ves en la lista
+                const { data: paidOrders, error: payError } = await this.supabase
+                    .from('pedidos')
+                    .select('total, pedido_detalle(cantidad, precio_unitario)')
+                    .eq('estado', 'Pagado')
+                    .gte('fecha_pedido', firstDay);
+
+                let revenue = 0;
+                if (!payError && paidOrders) {
+                    revenue = paidOrders.reduce((sum, order) => {
+                        // Usamos el total guardado, o lo calculamos si es un pedido antiguo (null)
+                        let orderTotal = order.total;
+                        if ((orderTotal === null || orderTotal === undefined) && order.pedido_detalle) {
+                            orderTotal = order.pedido_detalle.reduce((s, item) => s + (item.cantidad * item.precio_unitario), 0);
+                        }
+                        return sum + (orderTotal || 0);
+                    }, 0);
+                }
+
+                res.json({ products: productsCount, pendingOrders: ordersCount, revenue });
+            } catch (error) {
+                res.status(500).json({ error: 'Error al obtener estadísticas', details: error.message });
             }
         });
 

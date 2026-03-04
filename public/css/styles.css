@@ -764,13 +764,35 @@ form button[type="submit"],
     transform: translate(-50%, 0); /* Posición final */
 }
 
+#toast-message.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
 #toast-message.success { background-color: var(--success-color); }
 #toast-message.error { background-color: var(--danger-color); }
 
 /* =================================
    Diseño Responsivo (Media Queries)
    ================================= */
+@media (max-width: 992px) {
+    .admin-container, .profile-container {
+        flex-direction: column;
+    }
+
+    .admin-sidebar, .profile-sidebar {
+        flex: 1 1 100%;
+        width: 100%;
+        position: static; /* Anula el sticky para que no se quede pegado al hacer scroll */
+        margin-bottom: 2rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
+
     header .container {
         /* Mantenemos la dirección de fila pero justificamos */
         justify-content: space-between;
@@ -780,12 +802,13 @@ form button[type="submit"],
         position: fixed;
         top: 0;
         right: 0;
-        height: 100vh;
-        width: 60%;
+        height: 100%;
+        width: 280px;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        background-color: var(--dark-color);
+        background-color: #111;
+        border-left: 1px solid #333;
         transform: translateX(100%);
         transition: transform 0.3s ease-in-out;
         box-shadow: -5px 0 15px rgba(0,0,0,0.2);
@@ -804,7 +827,7 @@ form button[type="submit"],
         position: relative;
         width: 25px;
         height: 3px;
-        background-color: var(--light-color);
+        background-color: var(--light-color); /* Asegura que sea visible */
         transition: background-color 0s 0.2s;
     }
 
@@ -816,7 +839,7 @@ form button[type="submit"],
         width: 100%;
         height: 3px;
         background-color: var(--light-color);
-        transition: transform 0.2s ease-in-out, top 0.2s 0.2s ease-in-out;
+        transition: transform 0.3s ease-in-out, top 0.3s 0.3s ease-in-out;
     }
 
     .hamburger::before { top: -8px; }
@@ -824,8 +847,16 @@ form button[type="submit"],
 
     /* Animación de la hamburguesa a una 'X' */
     .nav-toggle.active .hamburger { background-color: transparent; }
-    .nav-toggle.active .hamburger::before { top: 0; transform: rotate(45deg); }
-    .nav-toggle.active .hamburger::after { top: 0; transform: rotate(-45deg); }
+    .nav-toggle.active .hamburger::before {
+        top: 0;
+        transform: rotate(45deg);
+        transition: top 0.3s ease-in-out, transform 0.3s 0.3s ease-in-out;
+    }
+    .nav-toggle.active .hamburger::after {
+        top: 0;
+        transform: rotate(-45deg);
+        transition: top 0.3s ease-in-out, transform 0.3s 0.3s ease-in-out;
+    }
 
     .hero-title {
         font-size: 2.5rem;
@@ -838,11 +869,18 @@ form button[type="submit"],
 
     h2 {
         font-size: 2rem;
+        margin-bottom: 2rem;
     }
 
     .filters {
         flex-direction: column;
         padding: 1rem;
+    }
+    
+    .product-grid {
+        /* En tablets, 2 columnas se ve mejor que 3 */
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
     }
 
     .cart-item {
@@ -852,10 +890,14 @@ form button[type="submit"],
 
     .footer-content {
         grid-template-columns: 1fr; /* Una columna en móvil */
-        text-align: center;
+        gap: 2.5rem;
     }
 
     .footer-section h2 {
+        text-align: center;
+    }
+
+    .footer-section p, .footer-section.links ul {
         text-align: center;
     }
 }
@@ -865,6 +907,10 @@ form button[type="submit"],
         /* Asegura que solo haya una columna en pantallas muy pequeñas */
         grid-template-columns: 1fr;
     }
+
+    .hero-title {
+        font-size: 2rem;
+    }
 }
 
 /* =================================
@@ -873,7 +919,7 @@ form button[type="submit"],
 .product-detail-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 3rem;
+    gap: 2rem;
     margin-bottom: 3rem;
     align-items: start;
 }
@@ -897,7 +943,7 @@ form button[type="submit"],
 
 .product-detail-info h1 {
     margin-top: 0;
-    font-size: 2.8rem;
+    font-size: 2.5rem;
     line-height: 1.2;
     color: var(--light-color);
 }
@@ -932,6 +978,15 @@ form button[type="submit"],
 @media (max-width: 768px) {
     .product-detail-layout {
         grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .product-detail-info h1 {
+        font-size: 2rem;
+    }
+
+    .product-detail-info .price {
+        font-size: 2rem;
     }
 }
 
@@ -1568,16 +1623,6 @@ form button[type="submit"],
 .order-date {
     font-size: 0.9rem; 
     color: var(--text-color-light);
-}
-
-@media (max-width: 768px) {
-    .profile-container {
-        flex-direction: column;
-    }
-    .profile-sidebar {
-        flex: 1 1 100%;
-        width: 100%;
-    }
 }
 
 /* =================================

@@ -1,6 +1,4 @@
-﻿# Sportify Store - Guía para Colaboradores
-
-Bienvenido al proyecto Sportify Store. Este documento es la guía central para configurar, ejecutar y contribuir al desarrollo de la aplicación.
+﻿Bienvenido al proyecto Sportify Store. Este documento es la guía central para configurar, ejecutar y contribuir al desarrollo de la aplicación.
 
 ## Características
 
@@ -65,10 +63,15 @@ Este es el paso más importante para que la aplicación se conecte a los servici
 SUPABASE_URL="https://xxxxxxxx.supabase.co"
 SUPABASE_ANON_KEY="eyJh..."
 SUPABASE_SERVICE_KEY="eyJh..."
+
 STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..." # El secreto del webhook que creas en el Dashboard de Stripe.
+
 EMAIL_USER="tu.correo@gmail.com"
 EMAIL_PASS="tu_contraseña_de_aplicacion"
 EMAIL_TO="correo_destino@ejemplo.com"
+
+BASE_URL="http://localhost:3000" # La URL base de tu aplicación (ej: https://www.mitienda.com)
 ```
 
 **¡Importante!** El archivo `.env` contiene información sensible y ya está incluido en `.gitignore` para que nunca se suba al repositorio.

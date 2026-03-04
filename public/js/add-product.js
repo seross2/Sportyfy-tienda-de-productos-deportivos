@@ -262,7 +262,15 @@ function handleFormSubmit() {
         const productData = Object.fromEntries(formData.entries());
 
         // Convertir a números y manejar valores nulos
-        productData.precio = Number(productData.precio) || 0;
+        const precioNum = Number(productData.precio);
+        if (isNaN(precioNum)) {
+            showToast('Error: El precio debe ser un número válido.', 'error');
+            submitButton.disabled = false;
+            submitButton.textContent = isEditMode ? 'Guardar Cambios' : 'Añadir Producto';
+            return;
+        }
+        productData.precio = precioNum;
+
         delete productData.id_categoria; // Eliminar la categoría del objeto, ya no se guarda en productos
         productData.id_marca = Number(productData.id_marca) || null;
         productData.variaciones = productVariations; // Añadir el array de variaciones
